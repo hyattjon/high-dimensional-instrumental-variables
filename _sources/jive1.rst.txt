@@ -1,7 +1,7 @@
 jive1
 =====
 
-.. automodule:: weak_instruments.jive1
+.. automodule:: high_dimensional_instrumental_variables.jive1
    :members:
    :undoc-members:
    :show-inheritance:
