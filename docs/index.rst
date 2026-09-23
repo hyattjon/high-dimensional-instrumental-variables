@@ -1,5 +1,5 @@
-Welcome to weak_instruments's documentation!
-============================================
+Welcome to high-dimensional-instrumental-variables's documentation!
+===================================================================
 
 .. toctree::
    :maxdepth: 2

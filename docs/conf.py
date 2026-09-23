@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'weak_instruments'
+project = 'high-dimensional-instrumental-variables'
 copyright = '2025, Jonathan Hyatt, Jacob Hutchings'
 author = 'Jonathan Hyatt, Jacob Hutchings'
 release = '1.0.0'

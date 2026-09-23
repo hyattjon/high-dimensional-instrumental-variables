@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "weak_instruments"
+name = "high-dimensional-instrumental-variables"
 version = "0.1.2"
 authors = [
   { name="Jonathan Hyatt", email="hyatt.jonathan99@gmail.com" },
@@ -26,8 +26,8 @@ license = "MIT"
 license-files = ["LICENSE*"]
 
 [project.urls]
-Homepage = "https://github.com/hyattjon/weak_instruments"
-Issues = "https://github.com/hyattjon/weak_instruments/issues"
+Homepage = "https://github.com/hyattjon/high-dimensional-instrumental-variables"
+Issues = "https://github.com/hyattjon/high-dimensional-instrumental-variables/issues"
 
 [project.optional-dependencies]
 docs = ["sphinx>=8.0"]

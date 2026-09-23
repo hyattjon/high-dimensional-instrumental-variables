@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from weak_instruments.jive2 import JIVE2
+from high_dimensional_instrumental_variables.jive2 import JIVE2
 from tests.helpers import make_data, reference
 
 

@@ -1,11 +1,19 @@
-# Jackknife IV estimators for many instruments
+# high-dimensional-instrumental-variables
+Jackknife IV estimators for instrumental variables regression with many instruments.
+
 Two stage least squares is biased when there are many instruments, and the problem gets worse when the instruments are weak. This package implements four jackknife instrumental variable estimators that reduce that bias: **JIVE1**, **JIVE2**, **UJIVE1** and **UJIVE2**. They are written in plain NumPy / SciPy, never form the N x N projection matrix, and return heteroskedasticity-robust standard errors, t-tests and confidence intervals.
 
 ## Installation
 ```
-git clone https://github.com/hyattjon/weak_instruments.git
-cd weak_instruments
+git clone https://github.com/hyattjon/high-dimensional-instrumental-variables.git
+cd high-dimensional-instrumental-variables
 pip install .        # needs numpy, scipy and pandas
+```
+
+The package is named `high-dimensional-instrumental-variables` but is imported as `high_dimensional_instrumental_variables` (Python module names can't contain hyphens):
+
+```python
+from high_dimensional_instrumental_variables.jive1 import JIVE1
 ```
 
 ## Jackknife IV estimators: JIVE1, JIVE2, UJIVE1, UJIVE2
@@ -16,7 +24,7 @@ These four estimators reduce the many-instruments bias of 2SLS. Each one replace
 
 ```python
 import numpy as np
-from weak_instruments.jive1 import JIVE1      # also: jive2.JIVE2, ujive1.UJIVE1, ujive2.UJIVE2
+from high_dimensional_instrumental_variables.jive1 import JIVE1      # also: jive2.JIVE2, ujive1.UJIVE1, ujive2.UJIVE2
 
 rng = np.random.default_rng(0)
 N, K = 500, 20
