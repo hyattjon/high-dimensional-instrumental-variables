@@ -141,7 +141,7 @@ for num_instruments in instrument_numbers:
 
                 # JIVE1
                 jive1 = JIVE1(Y, X, Z, talk=False)
-                beta_jive1_list.append(jive1.beta)
+                beta_jive1_list.append(jive1.beta[1])
                 fstat_jive1_list.append(jive1.f_stat)
 
                 # JIVE2

@@ -101,7 +101,7 @@ def run_monte_carlo(n_runs, n_sim, n, true_beta, perc, strength, figures_dir="..
 
             # JIVE1
             jive1 = JIVE1(Y, X, Z, talk=False)
-            beta_jive1_list.append(jive1.beta)
+            beta_jive1_list.append(jive1.beta[1])
 
             # JIVE2
             jive2 = JIVE2(Y, X, Z, talk=False)

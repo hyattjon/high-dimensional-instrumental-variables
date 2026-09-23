@@ -32,6 +32,14 @@ class JIVE2Result:
         F-statistic of the model.
     standard_errors : NDArray[np.float64]
         Robust standard errors for the estimated coefficients.
+    root_mse : float
+        Root mean squared error of the model.
+    pvals : list of float
+        p-values for the estimated coefficients.
+    tstats : list of float
+        t-statistics for the estimated coefficients.
+    cis : list of tuple
+        Confidence intervals for the estimated coefficients.
     """
     def __init__(self, 
                  beta: NDArray[np.float64], 
@@ -40,7 +48,11 @@ class JIVE2Result:
                  r_squared: NDArray[np.float64], 
                  adjusted_r_squared: NDArray[np.float64], 
                  f_stat: NDArray[np.float64],
-                 standard_errors: NDArray[np.float64]):
+                 standard_errors: NDArray[np.float64],
+                 root_mse: float | None = None,
+                 pvals: NDArray[np.float64] | None = None,
+                 tstats: NDArray[np.float64] | None = None,
+                 cis: NDArray[np.float64] | None = None):
         self.beta = beta
         self.leverage = leverage
         self.fitted_values = fitted_values
@@ -48,6 +60,10 @@ class JIVE2Result:
         self.adjusted_r_squared = adjusted_r_squared
         self.f_stat = f_stat
         self.standard_errors = standard_errors
+        self.root_mse = root_mse
+        self.pvals = pvals
+        self.tstats = tstats
+        self.cis = cis
 
     def __getitem__(self, key: str):
         """
@@ -81,12 +97,20 @@ class JIVE2Result:
             return self.f_stat
         elif key == 'standard_errors':
             return self.standard_errors
+        elif key == 'root_mse':
+            return self.root_mse
+        elif key == 'pvals':
+            return self.pvals
+        elif key == 'tstats':
+            return self.tstats
+        elif key == 'cis':
+            return self.cis
         else:
-            raise KeyError(f"Invalid key '{key}'. Valid keys are 'beta', 'leverage', 'fitted_values', 'r_squared', 'adjusted_r_squared', 'f_stat', or 'standard_errors'.")
+            raise KeyError(f"Invalid key '{key}'. Valid keys are 'beta', 'leverage', 'fitted_values', 'r_squared', 'adjusted_r_squared', 'f_stat', 'standard_errors', 'root_mse', 'pvals', 'tstats', or 'cis'.")
 
 
     def __repr__(self):
-        return f"JIVE1Result(beta={self.beta}, leverage={self.leverage}, fitted_values={self.fitted_values}, r_squared={self.r_squared}, adjusted_r_squared={self.adjusted_r_squared}, f_stat={self.f_stat}, standard_errors={self.standard_errors})"
+        return f"JIVE2Result(beta={self.beta}, leverage={self.leverage}, fitted_values={self.fitted_values}, r_squared={self.r_squared}, adjusted_r_squared={self.adjusted_r_squared}, f_stat={self.f_stat}, standard_errors={self.standard_errors}, root_mse={self.root_mse}, pvals={self.pvals}, tstats={self.tstats}, cis={self.cis})"
 
     def summary(self):
         """
@@ -98,6 +122,10 @@ class JIVE2Result:
         summary_df = pd.DataFrame({
             "Coefficient": self.beta.flatten(),
             "Std. Error": np.sqrt(np.diag(self.standard_errors)) if self.standard_errors is not None else np.nan,
+            "t-stat": self.tstats,
+            "P>|t|": self.pvals,
+            "Conf. Int. Low": [ci[0] for ci in self.cis] if self.cis is not None else np.nan,
+            "Conf. Int. High": [ci[1] for ci in self.cis] if self.cis is not None else np.nan
         })
 
         print("\nJIVE2 Regression Results")
@@ -107,6 +135,7 @@ class JIVE2Result:
         print(f"R-squared: {self.r_squared:.6f}" if self.r_squared is not None else "R-squared: N/A")
         print(f"Adjusted R-squared: {self.adjusted_r_squared:.6f}" if self.adjusted_r_squared is not None else "Adjusted R-squared: N/A")
         print(f"F-statistic: {self.f_stat:.6f}" if self.f_stat is not None else "F-statistic: N/A")
+        print(f"Root MSE: {self.root_mse:.6f}" if self.root_mse is not None else "Root MSE: N/A")
         print("=" * 80)
 
 
@@ -116,8 +145,8 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
 
     Args:
         Y (NDArray[np.float64]): A 1-D numpy array of the dependent variable (N x 1).
-        X (NDArray[np.float64]): A 2-D numpy array of the endogenous regressors (N x L).
-        Z (NDArray[np.float64]): A 2-D numpy array of the instruments (N x K), where K > L.
+        X (NDArray[np.float64]): A 2-D numpy array of the endogenous regressors (N x L). Do not include the constant.
+        Z (NDArray[np.float64]): A 2-D numpy array of the instruments (N x K), where K > L. Do not include the constant.
         W (NDArray[np.float64]): A 2-D numpy array of the exogenous controls (N x G). Do not include the constant. These are not necessary for the function. 
         talk (bool): If True, provides detailed output for teaching purposes. Default is False.
 
@@ -130,6 +159,7 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
             - adjusted_r_squared (float): The adjusted R-squared value for the model.
             - f_stat (float): The F-statistic for the model.
             - standard_errors (NDArray[np.float64]): The robust standard errors for the estimated coefficients.
+            - root_mse, pvals, tstats, cis: Root MSE, p-values, t-statistics and 95% confidence intervals.
 
     Raises:
         ValueError: If the dimensions of Y, X, or Z are inconsistent or invalid.
@@ -142,13 +172,18 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
             2. The second pass removes the ith observation to calculate unbiased estimates.
         - Additional statistics such as R-squared, adjusted R-squared, F-statistics, and robust standard errors are calculated for model evaluation.
         - If the number of endogenous regressors is 1, first-stage statistics (R-squared and F-statistic) are also computed.
+        - The N x N projection matrix Z(Z'Z)^-1 Z' is never formed. The first stage uses a reduced QR decomposition of Z
+          (fit = Q Q'X, leverage = row sums of Q squared), and the coefficients and variance come from lstsq / solve
+          instead of an explicit inverse. N must be larger than the number of columns of Z (instruments + constant + controls).
 
     Example:
         >>> import numpy as np
         >>> from weak_instruments.jive2 import JIVE2
-        >>> Y = np.array([1, 2, 3])
-        >>> X = np.array([[1], [2], [3]])
-        >>> Z = np.array([[1, 0], [0, 1], [1, 1]])
+        >>> rng = np.random.default_rng(0)
+        >>> Z = rng.normal(size=(100, 5))
+        >>> u = rng.normal(size=100)
+        >>> X = Z @ np.full(5, 0.5) + u
+        >>> Y = 1 + 2 * X + u + rng.normal(size=100)
         >>> result = JIVE2(Y, X, Z)
         >>> print(result.beta)
     """
@@ -211,18 +246,37 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
     logger.debug(f"Z shape after dropping constant columns: {Z.shape}")
 
 
+    # Add the constant
+    k = X.shape[1]
     ones = np.ones((N,1))
     X = np.hstack((ones, X))
     Z = np.hstack((ones, Z))
 
-    # First pass to get fitted values and leverage
-    #P = Z @ np.linalg.inv(Z.T @ Z) @ Z.T
-    fit = Z @ np.linalg.inv(Z.T @ Z) @ Z.T @ X
+    #Add the controls:
+    if W is not None:
+        if W.ndim == 1:
+            W = W.reshape(-1, 1)
+        if W.shape[0] != N:
+            raise ValueError(f"W must have the same number of rows as Y. Got W.shape[0] = {W.shape[0]} and Y.shape[0] = {N}.")
+        X = np.hstack((X, W))
+        Z = np.hstack((Z, W))
+        logger.debug("Controls W have been added to both X and Z.\n")
+
+    # First pass to get fitted values and leverage. We use a QR decomposition of Z instead of forming
+    # the N x N projection matrix P = Z(Z'Z)^-1 Z' (or inverting Z'Z).
+    if Z.shape[1] >= N:
+        raise ValueError(f"N must be larger than the number of columns of Z (instruments + constant + controls). Got N = {N} and {Z.shape[1]} columns.")
+    Qz, Rz = np.linalg.qr(Z, mode="reduced")
+    diag_R = np.abs(np.diag(Rz))
+    if diag_R.min() <= diag_R.max() * max(Z.shape) * np.finfo(float).eps:
+        raise ValueError("Z (with the constant and controls) is rank deficient. Remove collinear instruments or controls.")
+    fit = Qz @ (Qz.T @ X)
     logger.debug(f"Fitted values obtained.\n")
 
-    leverage = np.diag(Z @ np.linalg.inv(Z.T @ Z) @ Z.T)
-    if np.any(leverage >= 1):
-        raise ValueError("Leverage values must be strictly less than 1 to avoid division by zero.")
+    # Leverage is the main diagonal of the projection matrix: the row sums of Q squared
+    leverage = np.sum(Qz**2, axis=1)
+    if np.any(leverage >= 1 - 1e-10):
+        raise ValueError("Leverage values must be strictly less than 1 to avoid division by zero. An observation is the only one with its instrument / control values.")
     logger.debug(f"Leverage values obtained.\n")
 
     # Reshape leverage to an Nx1 vector
@@ -230,23 +284,28 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
     logger.debug(f"First pass complete.\n")
 
     # Second pass to remove ith row and reduce bias
-    fit = fit[:, 1:]
-    X = X[:,1:]
+    fit = fit[:, 1:1+k]
+    X = X[:,1:1+k]
     X_jive2 = (fit - leverage * X) / (1 - (1/N))
     logger.debug(f"Second pass complete.\n")
 
-    X_jive2 = np.hstack((ones, X_jive2))
-    X = np.hstack((ones, X))
+    if W is not None:
+        X_jive2 = np.hstack((ones, X_jive2, W))
+        X = np.hstack((ones, X, W))
+    else:
+        X_jive2 = np.hstack((ones, X_jive2))
+        X = np.hstack((ones, X))
 
     # Calculate the JIVE2 estimates
-    beta_jive2 = np.linalg.inv(X_jive2.T @ X_jive2) @ X_jive2.T @ Y
+    beta_jive2, *_ = np.linalg.lstsq(X_jive2, Y, rcond=None)
     logger.debug(f"JIVE2 Estimates:\n{beta_jive2}\n")
 
     #Now, lets get standard errors and do a t-test. We follow Poi (2006).
-    midsum = 0
-    for i in range(N):
-        midsum += (Y[i] - X[i] @ beta_jive2)**2 * np.outer(X_jive2[i], X_jive2[i])
-    robust_v = np.linalg.inv(X_jive2.T @ X_jive2) @ midsum @ np.linalg.inv(X_jive2.T @ X_jive2)
+    resid = Y - X @ beta_jive2
+    midsum = (X_jive2 * (resid**2)[:, None]).T @ X_jive2
+    A = X_jive2.T @ X_jive2
+    left = np.linalg.solve(A, midsum)
+    robust_v = np.linalg.solve(A, left.T).T
 
 
     #Lets do a hypothesis test that B1=0
@@ -264,8 +323,8 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
         ci_lower = beta_jive2[i] - t_crit_i * (robust_v[i,i])**.5
         ci_upper = beta_jive2[i] + t_crit_i * (robust_v[i,i])**.5
         ci_i = (ci_lower, ci_upper)
-        tstats.append(t_stat_i)
-        pvals.append(pval_i)
+        tstats.append(float(t_stat_i))
+        pvals.append(float(pval_i))
         cis.append(ci_i)  
 
     #Grab the R^2 for the model:
@@ -279,7 +338,7 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
     F = ((np.sum((yfit-ybar)**2)) / (q-1)) / ((e.T @ e)/(N-q))
 
     #Mean-square error:
-    root_mse = ((1/(N-q)) * (np.sum((Y - yfit)**2)))**.5
+    root_mse = float(((1/(N-q)) * (np.sum((Y - yfit)**2)))**.5)
 
     #Adjustred R2
     ar2 = 1 - (((1-r2)*(N-1))/(N-q))
@@ -287,7 +346,7 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
     #Now, we can add some first stage statistics if the number of endogenous regressors is 1
     if X.ndim == 2:
         X_fs = X[:,1]
-        fs_fit = Z @ np.linalg.inv(Z.T @ Z) @ Z.T @ X_fs
+        fs_fit = Qz @ (Qz.T @ X_fs)
         xbar = np.mean(X_fs)
 
         #First Stage R2
@@ -305,4 +364,8 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
                        r_squared=r2,
                        adjusted_r_squared=ar2,
                        f_stat=F,
-                       standard_errors=robust_v)
+                       standard_errors=robust_v,
+                       root_mse=root_mse,
+                       pvals=pvals,
+                       tstats=tstats,
+                       cis=cis)

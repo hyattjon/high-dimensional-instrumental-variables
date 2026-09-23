@@ -28,3 +28,6 @@ Issues = "https://github.com/pypa/weak_instruments/issues"
 numpy = ">=1.21"
 scipy = ">=1.7"
 sphinx = ">=8.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

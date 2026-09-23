@@ -121,7 +121,8 @@ class UJIVE2Result:
         if self.first_stage_f is not None:
             print("-" * 80)
             print(f"First-stage F-statistic: {self.first_stage_f:.6f}")
-            print(f"First-stage F p-value: {self.first_stage_f_pval:.6f}")
+            if self.first_stage_f_pval is not None:
+                print(f"First-stage F p-value: {self.first_stage_f_pval:.6f}")
             
             # Add warnings for weak instruments based on Stock-Yogo critical values
             if self.first_stage_f < 10:
@@ -154,21 +155,26 @@ def UJIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64
         RuntimeWarning: If the number of instruments (columns in Z) is not greater than the number of regressors (columns in X).
 
     Notes:
-        - The JIVE2 estimator is a jackknife-based instrumental variable estimator designed to reduce bias in the presence of many instruments.
+        - The UJIVE2 estimator is a jackknife-based instrumental variable estimator designed to reduce bias in the presence of many instruments.
         - The function performs a two-pass estimation:
             1. The first pass calculates fitted values and leverage values using the instruments.
             2. The second pass removes the ith observation to calculate unbiased estimates.
         - Additional statistics such as R-squared, adjusted R-squared, and F-statistics are calculated for model evaluation.
         - If the number of endogenous regressors is 1, first-stage statistics (R-squared and F-statistic) are also computed.
+        - The N x N projection matrix Z(Z'Z)^-1 Z' is never formed. The first stage uses a reduced QR decomposition of Z
+          (fit = Q Q'X, leverage = row sums of Q squared), and the coefficients and variance come from solve
+          instead of an explicit inverse. N must be larger than the number of columns of Z (instruments + constant + controls).
 
     Example:
         >>> import numpy as np
         >>> from weak_instruments.ujive2 import UJIVE2
-        >>> Y = np.array([1, 2, 3])
-        >>> X = np.array([[1], [2], [3]])
-        >>> Z = np.array([[1, 0], [0, 1], [1, 1]])
-        >>> result = UJIVE1(Y, X, Z)
-        >>> print(result.summary())
+        >>> rng = np.random.default_rng(0)
+        >>> Z = rng.normal(size=(100, 5))
+        >>> u = rng.normal(size=100)
+        >>> X = Z @ np.full(5, 0.5) + u
+        >>> Y = 1 + 2 * X + u + rng.normal(size=100)
+        >>> result = UJIVE2(Y, X, Z)
+        >>> print(result.beta)
     """
 
     # Convert pandas DataFrames/Series to numpy arrays
@@ -245,13 +251,21 @@ def UJIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64
         Z = np.hstack((Z, W))
         logger.debug("Controls W have been added to both X and Z.\n")
 
-    # First pass to get fitted values and leverage
-    fit = Z @ np.linalg.inv(Z.T @ Z) @ Z.T @ X
+    # First pass to get fitted values and leverage. We use a QR decomposition of Z instead of forming
+    # the N x N projection matrix P = Z(Z'Z)^-1 Z' (or inverting Z'Z).
+    if Z.shape[1] >= N:
+        raise ValueError(f"N must be larger than the number of columns of Z (instruments + constant + controls). Got N = {N} and {Z.shape[1]} columns.")
+    Qz, Rz = np.linalg.qr(Z, mode="reduced")
+    diag_R = np.abs(np.diag(Rz))
+    if diag_R.min() <= diag_R.max() * max(Z.shape) * np.finfo(float).eps:
+        raise ValueError("Z (with the constant and controls) is rank deficient. Remove collinear instruments or controls.")
+    fit = Qz @ (Qz.T @ X)
     logger.debug(f"Fitted values obtained.\n")
 
-    leverage = np.diag(Z @ np.linalg.inv(Z.T @ Z) @ Z.T)
-    if np.any(leverage >= 1):
-        raise ValueError("Leverage values must be strictly less than 1 to avoid division by zero.")
+    # Leverage is the main diagonal of the projection matrix: the row sums of Q squared
+    leverage = np.sum(Qz**2, axis=1)
+    if np.any(leverage >= 1 - 1e-10):
+        raise ValueError("Leverage values must be strictly less than 1 to avoid division by zero. An observation is the only one with its instrument / control values.")
     logger.debug(f"Leverage values obtained.\n")
 
     # Reshape leverage to an Nx1 vector
@@ -272,14 +286,15 @@ def UJIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64
         X = np.hstack((ones, X))
 
     # Calculate the UJIVE2 estimates
-    beta_jive2 = np.linalg.inv(X_jive2.T @ X) @ X_jive2.T @ Y
+    A = X_jive2.T @ X
+    beta_jive2 = np.linalg.solve(A, X_jive2.T @ Y)
     logger.debug(f"UJIVE2 Estimates:\n{beta_jive2}\n")
 
     # Now, let's get standard errors and do a t-test. We follow Poi (2006).
-    midsum = 0
-    for i in range(N):
-        midsum += (Y[i] - X[i] @ beta_jive2) ** 2 * np.outer(X_jive2[i], X_jive2[i])
-    robust_v = np.linalg.inv(X_jive2.T @ X) @ midsum @ np.linalg.inv(X.T @ X_jive2)
+    resid = Y - X @ beta_jive2
+    midsum = (X_jive2 * (resid ** 2)[:, None]).T @ X_jive2
+    left = np.linalg.solve(A, midsum)
+    robust_v = np.linalg.solve(A, left.T).T
 
     # Hypothesis test that B1 = 0
     pvals = []
@@ -319,7 +334,7 @@ def UJIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64
     # First stage statistics if the number of endogenous regressors is 1
     if X.ndim == 2:
         X_fs = X[:, 1]
-        fs_fit = Z @ np.linalg.inv(Z.T @ Z) @ Z.T @ X_fs
+        fs_fit = Qz @ (Qz.T @ X_fs)
         xbar = np.mean(X_fs)
 
         # First Stage R^2
