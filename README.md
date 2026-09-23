@@ -1,6 +1,12 @@
-# Solutions to Weak Instruments
-Two stage least squares with instruments has become a common method for estimation. Issues can arise when there are many instruments and is compounded when there are many weak instruments. Problems also arise when treatment is clustered.  Many methods have been proposed to handle these issues. In this package, we highlight some proposed solutions to many instruments bias and weak instruments bias, and run Monte Carlo simulations on a newly created Python package for handling many instruments bias.
+# Jackknife IV estimators for many instruments
+Two stage least squares is biased when there are many instruments, and the problem gets worse when the instruments are weak. This package implements four jackknife instrumental variable estimators that reduce that bias: **JIVE1**, **JIVE2**, **UJIVE1** and **UJIVE2**. They are written in plain NumPy / SciPy, never form the N x N projection matrix, and return heteroskedasticity-robust standard errors, t-tests and confidence intervals.
 
+## Installation
+```
+git clone https://github.com/hyattjon/weak_instruments.git
+cd weak_instruments
+pip install .        # needs numpy, scipy and pandas
+```
 
 ## Jackknife IV estimators: JIVE1, JIVE2, UJIVE1, UJIVE2
 
@@ -83,46 +89,6 @@ pip install pytest
 pytest
 ```
 
-## Cluster Jive (CJIVE)
-Cluster Jive accomplishes a simliar task but is used when treatment is correlated for clusters instead of individuals.
+### Other estimators
 
-## IJIVE
-
-
-## SJIVE
-
-
-## LIML
-
-
-## Two Stage Least Squares
-We create two stage least squares for comparison purposes
-
-
-## Weak identification with many instruments (Mikushueva and Sun)
-
-
-## Lim et al.
-
-
-
-
-## Jacknife Anderson-Rubin tests for many weak IV inference
-
-
-
-## Lagrange Multiplier
-
-
-
-## HFUL
-
-
-
-Each file should check for:
-- Multicollinearity
-- Perfect collinearity
-- Dimensions of variables (Single column of controls etc)
-    - Check to see if dimensions are the same for all variables
-- Constant columns
-- Y and Z must be one dimensional vectors
+Earlier versions of this repository also contained 2SLS, LIML, HFUL, SJIVE, IJIVE, CJIVE, Anderson-Rubin and Lagrange multiplier tests, and the Monte Carlo simulation code and results. They were removed from `main` to keep this repository focused, but they are still in the git history and on the `archive/full-package` branch.

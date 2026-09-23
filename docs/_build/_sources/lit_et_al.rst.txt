@@ -1,7 +1,0 @@
-lit_et_al Module
-============
-
-.. automodule:: weak_instruments.lit_et_al
-   :members:
-   :undoc-members:
-   :show-inheritance:
