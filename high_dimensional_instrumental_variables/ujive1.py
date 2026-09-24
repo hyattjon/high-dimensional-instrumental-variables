@@ -1,20 +1,13 @@
-# JIVE 1
+# UJIVE1 estimator
 import numpy as np
-import warnings
 import logging
 from numpy.typing import NDArray
-from typing import NamedTuple
 from scipy.stats import t
-from ._common import prepare_inputs, first_stage_f, first_stage_lines
-from pprint import pprint
+from ._common import prepare_inputs, first_stage_f, first_stage_lines, talk_option
 
-# Set up the logger This helps with error outputs and stuff. We can use this instead of printing
+# Debug output (talk=True) is switched on per call by @talk_option; see _common.talk_logging.
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)  
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(message)s')  
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger.addHandler(logging.NullHandler())
 
 class UJIVE1Result:
     """
@@ -37,11 +30,11 @@ class UJIVE1Result:
                  beta: NDArray[np.float64], 
                  leverage: NDArray[np.float64], 
                  fitted_values: NDArray[np.float64], 
-                 r_squared: NDArray[np.float64], 
-                 adjusted_r_squared: NDArray[np.float64], 
-                 f_stat: NDArray[np.float64],
+                 r_squared: float, 
+                 adjusted_r_squared: float, 
+                 f_stat: float,
                  standard_errors: NDArray[np.float64],
-                 root_mse: NDArray[np.float64],
+                 root_mse: float,
                  pvals: NDArray[np.float64] | None = None,
                  tstats: NDArray[np.float64] | None = None,
                  cis: NDArray[np.float64] | None = None,
@@ -123,15 +116,16 @@ class UJIVE1Result:
             print(line)
         print("=" * 80)
 
+@talk_option(logger)
 def UJIVE1(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64], W: NDArray[np.float64] | None = None, *, talk: bool = False) -> UJIVE1Result:
     """
-    Calculates the UJIVE1 estimator using a two-pass approach recommended by Angrist, Imbens, and Kreuger (1999) in Jackknife IV estimation.
+    Calculates the UJIVE1 estimator using a two-pass approach recommended by Angrist, Imbens, and Krueger (1999) in Jackknife IV estimation.
 
     Args:
-        Y (NDArray[np.float64]): A 1-D numpy array of the dependent variable (N x 1).
-        X (NDArray[np.float64]): A 2-D numpy array of the endogenous regressors (N x L). Do not inlude the constant.
-        Z (NDArray[np.float64]): A 2-D numpy array of the instruments (N x K), where K > L. Do not include the constant.
-        W (NDArray[np.float64]): A 2-D numpy array of the exogenous controls (N x G). Do not include the constant. These are not necessary for the function. 
+        Y (NDArray[np.float64]): A 1-D numpy array of the dependent variable (N,).
+        X (NDArray[np.float64]): A 2-D numpy array of the endogenous regressors (N x L). Do not include the constant.
+        Z (NDArray[np.float64]): A 2-D numpy array of the instruments (N x K), where K >= L. Do not include the constant.
+        W (NDArray[np.float64]): A 2-D numpy array of the exogenous controls (N x G). Do not include the constant. Optional (default None).
         talk (bool): If True, provides detailed output for teaching / debugging purposes. Default is False.
 
     Returns:
@@ -149,7 +143,7 @@ def UJIVE1(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64
             instruments than endogenous regressors, if N is not larger than the number of columns of Z, or if Z is rank deficient.
 
     Notes:
-        - The JIVE1 estimator is a jackknife-based instrumental variable estimator designed to reduce bias in the presence of many instruments.
+        - The UJIVE1 estimator is a jackknife-based instrumental variable estimator designed to reduce bias in the presence of many instruments.
         - The function performs a two-pass estimation:
             1. The first pass calculates fitted values and leverage values using the instruments.
             2. The second pass removes the ith observation to calculate unbiased estimates.
@@ -174,12 +168,6 @@ def UJIVE1(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64
         >>> result = UJIVE1(Y, X, Z)
         >>> print(result.beta)
     """
-
-    # Adjust logging level based on the `talk` parameter.
-    if talk:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.WARNING)
 
     # Convert to float arrays; check for NaN / inf, shapes and identification; drop constant columns
     Y, X, Z, W = prepare_inputs(Y, X, Z, W, logger)

@@ -1,17 +1,13 @@
-# JIVE2 Estimator
+# JIVE2 estimator
 import numpy as np
 import logging
 from numpy.typing import NDArray
 from scipy.stats import t
-from ._common import prepare_inputs, first_stage_f, first_stage_lines
+from ._common import prepare_inputs, first_stage_f, first_stage_lines, talk_option
 
-# Set up the logger
+# Debug output (talk=True) is switched on per call by @talk_option; see _common.talk_logging.
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)  # Default logging level
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(message)s')  # Simple format for teaching purposes
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger.addHandler(logging.NullHandler())
 
 class JIVE2Result:
     """
@@ -46,9 +42,9 @@ class JIVE2Result:
                  beta: NDArray[np.float64], 
                  leverage: NDArray[np.float64], 
                  fitted_values: NDArray[np.float64],
-                 r_squared: NDArray[np.float64], 
-                 adjusted_r_squared: NDArray[np.float64], 
-                 f_stat: NDArray[np.float64],
+                 r_squared: float, 
+                 adjusted_r_squared: float, 
+                 f_stat: float,
                  standard_errors: NDArray[np.float64],
                  root_mse: float | None = None,
                  pvals: NDArray[np.float64] | None = None,
@@ -150,15 +146,16 @@ class JIVE2Result:
         print("=" * 80)
 
 
+@talk_option(logger)
 def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64], W: NDArray[np.float64] | None = None, *, talk: bool = False) -> JIVE2Result:
     """
-    Calculates the JIVE2 estimator defined by Blomquist and Dahlberg (1999) in Jackknife IV estimation.
+    Calculates the JIVE2 jackknife IV estimator: Y is regressed on the leave-one-out first-stage fitted values of the endogenous regressors (Stata jive naming; see the README section on naming).
 
     Args:
-        Y (NDArray[np.float64]): A 1-D numpy array of the dependent variable (N x 1).
+        Y (NDArray[np.float64]): A 1-D numpy array of the dependent variable (N,).
         X (NDArray[np.float64]): A 2-D numpy array of the endogenous regressors (N x L). Do not include the constant.
-        Z (NDArray[np.float64]): A 2-D numpy array of the instruments (N x K), where K > L. Do not include the constant.
-        W (NDArray[np.float64]): A 2-D numpy array of the exogenous controls (N x G). Do not include the constant. These are not necessary for the function. 
+        Z (NDArray[np.float64]): A 2-D numpy array of the instruments (N x K), where K >= L. Do not include the constant.
+        W (NDArray[np.float64]): A 2-D numpy array of the exogenous controls (N x G). Do not include the constant. Optional (default None).
         talk (bool): If True, provides detailed output for teaching purposes. Default is False.
 
     Returns:
@@ -201,12 +198,6 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
         >>> result = JIVE2(Y, X, Z)
         >>> print(result.beta)
     """
-
-    # Adjust logging level based on the `talk` parameter.
-    if talk:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.WARNING)
 
     # Convert to float arrays; check for NaN / inf, shapes and identification; drop constant columns
     Y, X, Z, W = prepare_inputs(Y, X, Z, W, logger)

@@ -1,18 +1,14 @@
-# JIVE2 Estimator
+# UJIVE2 estimator
 import numpy as np
 import logging
 from numpy.typing import NDArray
 from scipy.stats import t
-from ._common import prepare_inputs, first_stage_f, first_stage_lines
+from ._common import prepare_inputs, first_stage_f, first_stage_lines, talk_option
 
 
-# Set up the logger
+# Debug output (talk=True) is switched on per call by @talk_option; see _common.talk_logging.
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)  # Default logging level
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(message)s')  # Simple format for teaching purposes
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger.addHandler(logging.NullHandler())
 
 class UJIVE2Result:
     """
@@ -122,22 +118,23 @@ class UJIVE2Result:
             print(line)
         print("=" * 80)
 
+@talk_option(logger)
 def UJIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64], W: NDArray[np.float64] | None = None, *, talk: bool = False) -> UJIVE2Result:
     """
-    Calculates the UJIVE2 estimator using a two-pass approach recommended by Angrist, Imbens, and Kreuger (1999) in Jackknife IV estimation.
+    Calculates the UJIVE2 estimator using a two-pass approach recommended by Angrist, Imbens, and Krueger (1999) in Jackknife IV estimation.
 
     Args:
-        Y (NDArray[np.float64]): A 1-D numpy array of the dependent variable (N x 1).
-        X (NDArray[np.float64]): A 2-D numpy array of the endogenous regressors (N x L). Do not inlude the constant.
-        Z (NDArray[np.float64]): A 2-D numpy array of the instruments (N x K), where K > L. Do not include the constant.
-        W (NDArray[np.float64]): A 2-D numpy array of the exogenous controls (N x G). Do not include the constant. These are not necessary for the function. 
+        Y (NDArray[np.float64]): A 1-D numpy array of the dependent variable (N,).
+        X (NDArray[np.float64]): A 2-D numpy array of the endogenous regressors (N x L). Do not include the constant.
+        Z (NDArray[np.float64]): A 2-D numpy array of the instruments (N x K), where K >= L. Do not include the constant.
+        W (NDArray[np.float64]): A 2-D numpy array of the exogenous controls (N x G). Do not include the constant. Optional (default None).
         talk (bool): If True, provides detailed output for teaching / debugging purposes. Default is False.
 
     Returns:
-        UJIVE1Result: An object containing the following attributes:
+        UJIVE2Result: An object containing the following attributes:
             - beta (NDArray[np.float64]): The estimated coefficients for the model.
             - leverage (NDArray[np.float64]): The leverage values for each observation.
-            - fitted_values (NDArray[np.float64]): The fitted values from the first pass of the UJIVE1 estimator.
+            - fitted_values (NDArray[np.float64]): The fitted values from the first pass of the UJIVE2 estimator.
             - r_squared (float): The R-squared value for the model.
             - adjusted_r_squared (float): The adjusted R-squared value for the model.
             - f_stat (float): The F-statistic for the model.
@@ -173,12 +170,6 @@ def UJIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64
         >>> result = UJIVE2(Y, X, Z)
         >>> print(result.beta)
     """
-
-    # Adjust logging level based on the `talk` parameter.
-    if talk:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.WARNING)
 
     # Convert to float arrays; check for NaN / inf, shapes and identification; drop constant columns
     Y, X, Z, W = prepare_inputs(Y, X, Z, W, logger)

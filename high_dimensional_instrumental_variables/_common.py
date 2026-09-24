@@ -1,4 +1,8 @@
 """Input checks and first-stage diagnostics shared by the jackknife IV estimators."""
+import contextlib
+import functools
+import logging
+
 import numpy as np
 from scipy.stats import f as f_dist
 
@@ -134,3 +138,39 @@ def first_stage_lines(F, pval):
     if np.min(F) < 10:
         lines.append("WARNING: First-stage F < 10, indicating potentially weak instruments")
     return lines
+
+
+@contextlib.contextmanager
+def talk_logging(logger, talk):
+    """With talk=True, print the estimator's debug messages to stderr for the duration of the call.
+
+    The handler is attached only inside the call and the logger's level and propagation are restored afterwards, so
+    there is no output (and no leaked state) when talk=False, and no duplicate lines if the user has configured
+    logging themselves.
+    """
+    if not talk:
+        yield
+        return
+    handler = logging.StreamHandler()  # created now, so it writes to the current sys.stderr
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    old_level, old_propagate = logger.level, logger.propagate
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    try:
+        yield
+    finally:
+        logger.removeHandler(handler)
+        logger.setLevel(old_level)
+        logger.propagate = old_propagate
+
+
+def talk_option(logger):
+    """Decorator: honour the keyword argument `talk` of an estimator by wrapping the call in talk_logging."""
+    def decorator(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            with talk_logging(logger, kwargs.get("talk", False)):
+                return f(*args, **kwargs)
+        return wrapper
+    return decorator

@@ -107,3 +107,38 @@ def test_summary_reports_first_stage_f(capsys):
     for f in ESTIMATORS:
         f(Y, x, Z, W=W).summary()
     assert capsys.readouterr().out.count("First-stage F-statistic") == 4
+
+
+# ---- talk=True logging ----------------------------------------------------------------------------------------
+import logging
+
+from high_dimensional_instrumental_variables import jive1 as jive1_module
+
+
+@pytest.mark.parametrize("f", ESTIMATORS, ids=ids)
+def test_talk_prints_step_by_step_output_once(f, capsys):
+    Y, x, Z, _ = make_data(100, 4)
+    f(Y, x, Z, talk=True)
+    assert capsys.readouterr().err.count("Fitted values obtained") == 1
+
+
+@pytest.mark.parametrize("f", ESTIMATORS, ids=ids)
+def test_no_output_without_talk(f, capsys):
+    Y, x, Z, _ = make_data(100, 4)
+    f(Y, x, Z)
+    captured = capsys.readouterr()
+    assert captured.err == "" and captured.out == ""
+
+
+def test_talk_leaves_logger_state_untouched_and_does_not_duplicate_with_root_logging(capsys):
+    lg = jive1_module.logger
+    before = (lg.level, lg.propagate, list(lg.handlers))
+    Y, x, Z, _ = make_data(100, 4)
+    root_handler = logging.StreamHandler()  # what logging.basicConfig() would set up in a user's script
+    logging.getLogger().addHandler(root_handler)
+    try:
+        jive1_module.JIVE1(Y, x, Z, talk=True)
+    finally:
+        logging.getLogger().removeHandler(root_handler)
+    assert capsys.readouterr().err.count("Fitted values obtained") == 1  # not printed a second time by the root handler
+    assert (lg.level, lg.propagate, list(lg.handlers)) == before
