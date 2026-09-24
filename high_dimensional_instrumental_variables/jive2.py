@@ -3,6 +3,7 @@ import numpy as np
 import logging
 from numpy.typing import NDArray
 from scipy.stats import t
+from ._common import prepare_inputs, first_stage_f, first_stage_lines
 
 # Set up the logger
 logger = logging.getLogger(__name__)
@@ -52,7 +53,9 @@ class JIVE2Result:
                  root_mse: float | None = None,
                  pvals: NDArray[np.float64] | None = None,
                  tstats: NDArray[np.float64] | None = None,
-                 cis: NDArray[np.float64] | None = None):
+                 cis: NDArray[np.float64] | None = None,
+                 first_stage_f: float | None = None,
+                 first_stage_f_pval: float | None = None):
         self.beta = beta
         self.leverage = leverage
         self.fitted_values = fitted_values
@@ -64,6 +67,8 @@ class JIVE2Result:
         self.pvals = pvals
         self.tstats = tstats
         self.cis = cis
+        self.first_stage_f = first_stage_f
+        self.first_stage_f_pval = first_stage_f_pval
 
     def __getitem__(self, key: str):
         """
@@ -105,12 +110,16 @@ class JIVE2Result:
             return self.tstats
         elif key == 'cis':
             return self.cis
+        elif key == 'first_stage_f':
+            return self.first_stage_f
+        elif key == 'first_stage_f_pval':
+            return self.first_stage_f_pval
         else:
-            raise KeyError(f"Invalid key '{key}'. Valid keys are 'beta', 'leverage', 'fitted_values', 'r_squared', 'adjusted_r_squared', 'f_stat', 'standard_errors', 'root_mse', 'pvals', 'tstats', or 'cis'.")
+            raise KeyError(f"Invalid key '{key}'. Valid keys are 'beta', 'leverage', 'fitted_values', 'r_squared', 'adjusted_r_squared', 'f_stat', 'standard_errors', 'root_mse', 'pvals', 'tstats', 'cis', 'first_stage_f', or 'first_stage_f_pval'.")
 
 
     def __repr__(self):
-        return f"JIVE2Result(beta={self.beta}, leverage={self.leverage}, fitted_values={self.fitted_values}, r_squared={self.r_squared}, adjusted_r_squared={self.adjusted_r_squared}, f_stat={self.f_stat}, standard_errors={self.standard_errors}, root_mse={self.root_mse}, pvals={self.pvals}, tstats={self.tstats}, cis={self.cis})"
+        return f"JIVE2Result(beta={self.beta}, leverage={self.leverage}, fitted_values={self.fitted_values}, r_squared={self.r_squared}, adjusted_r_squared={self.adjusted_r_squared}, f_stat={self.f_stat}, standard_errors={self.standard_errors}, root_mse={self.root_mse}, pvals={self.pvals}, tstats={self.tstats}, cis={self.cis}, first_stage_f={self.first_stage_f}, first_stage_f_pval={self.first_stage_f_pval})"
 
     def summary(self):
         """
@@ -136,10 +145,12 @@ class JIVE2Result:
         print(f"Adjusted R-squared: {self.adjusted_r_squared:.6f}" if self.adjusted_r_squared is not None else "Adjusted R-squared: N/A")
         print(f"F-statistic: {self.f_stat:.6f}" if self.f_stat is not None else "F-statistic: N/A")
         print(f"Root MSE: {self.root_mse:.6f}" if self.root_mse is not None else "Root MSE: N/A")
+        for line in first_stage_lines(self.first_stage_f, self.first_stage_f_pval):
+            print(line)
         print("=" * 80)
 
 
-def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64], W: NDArray[np.float64] | None = None, G: NDArray[np.float64] | None = None, talk: bool = False) -> JIVE2Result:
+def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64], W: NDArray[np.float64] | None = None, *, talk: bool = False) -> JIVE2Result:
     """
     Calculates the JIVE2 estimator defined by Blomquist and Dahlberg (1999) in Jackknife IV estimation.
 
@@ -162,8 +173,8 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
             - root_mse, pvals, tstats, cis: Root MSE, p-values, t-statistics and 95% confidence intervals.
 
     Raises:
-        ValueError: If the dimensions of Y, X, or Z are inconsistent or invalid.
-        RuntimeWarning: If the number of instruments (columns in Z) is not greater than the number of regressors (columns in X).
+        ValueError: If Y, X, Z or W contain NaN / inf or non-numeric data, have inconsistent dimensions, if there are fewer excluded
+            instruments than endogenous regressors, if N is not larger than the number of columns of Z, or if Z is rank deficient.
 
     Notes:
         - The JIVE2 estimator is a jackknife-based instrumental variable estimator designed to reduce bias in the presence of many instruments.
@@ -171,7 +182,9 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
             1. The first pass calculates fitted values and leverage values using the instruments.
             2. The second pass removes the ith observation to calculate unbiased estimates.
         - Additional statistics such as R-squared, adjusted R-squared, F-statistics, and robust standard errors are calculated for model evaluation.
-        - If the number of endogenous regressors is 1, first-stage statistics (R-squared and F-statistic) are also computed.
+        - first_stage_f / first_stage_f_pval: the partial first-stage F-test (classical, homoskedastic) that the excluded instruments jointly explain
+          each endogenous regressor, given the constant and controls. A float for one endogenous regressor, an array otherwise. The usual rule of
+          thumb is that F < 10 signals weak instruments.
         - The N x N projection matrix Z(Z'Z)^-1 Z' is never formed. The first stage uses a reduced QR decomposition of Z
           (fit = Q Q'X, leverage = row sums of Q squared), and the coefficients and variance come from lstsq / solve
           instead of an explicit inverse. N must be larger than the number of columns of Z (instruments + constant + controls).
@@ -189,76 +202,23 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
         >>> print(result.beta)
     """
 
-    # Convert pandas DataFrames/Series to numpy arrays
-    if hasattr(Y, "values"):
-        Y = Y.values
-    if hasattr(X, "values"):
-        X = X.values
-    if hasattr(Z, "values"):
-        Z = Z.values
-    if G is not None and hasattr(G, "values"):
-        G = G.values
-    if W is not None and hasattr(W, "values"):
-        W = W.values
-    # Adjust logging level based on the `talk` parameter
+    # Adjust logging level based on the `talk` parameter.
     if talk:
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.WARNING)
 
-    # Check if Y is a one-dimensional array
-    if Y.ndim != 1:
-        raise ValueError(f"Y must be a one-dimensional array, but got shape {Y.shape}.")
-    # Check if Z is at least a one-dimensional array
-    if Z.ndim < 1:
-        raise ValueError(f"Z must be at least a one-dimensional array, but got shape {Z.shape}.")
-    
-    #If X/Z is a single vector:
-    if X.ndim == 1:
-        X = X.reshape(-1,1)
-    if Z.ndim == 1:
-        Z = Z.reshape(-1,1)
-    
-    # Check that Y, X, and Z have consistent dimensions
+    # Convert to float arrays; check for NaN / inf, shapes and identification; drop constant columns
+    Y, X, Z, W = prepare_inputs(Y, X, Z, W, logger)
     N = Y.shape[0]
-    if X.shape[0] != N:
-        raise ValueError(f"X and Y must have the same number of rows. Got X.shape[0] = {X.shape[0]} and Y.shape[0] = {N}.")
-    if Z.shape[0] != N:
-        raise ValueError(f"Z and Y must have the same number of rows. Got Z.shape[0] = {Z.shape[0]} and Y.shape[0] = {N}.")
 
 
-    logger.debug(f"Y has {Y.shape[0]} rows.\n")
-    logger.debug(f"X has {X.shape[0]} rows and {X.shape[1]} columns.\n")
-    logger.debug(f"Z has {Z.shape[0]} rows and {Z.shape[1]} columns.\n")
-
-    # Drop constant columns from X
-    constant_columns_X = np.all(np.isclose(X, X[0, :], atol=1e-8), axis=0)
-    if np.any(constant_columns_X):  # Check if there are any constant columns
-        logger.debug(f"X has constant columns. Dropping columns: {np.where(constant_columns_X)[0]}")
-        X = X[:, ~constant_columns_X]  # Keep only non-constant columns
-
-    # Drop constant columns from Z
-    constant_columns_Z = np.all(np.isclose(Z, Z[0, :], atol=1e-8), axis=0)
-    if np.any(constant_columns_Z):  # Check if there are any constant columns
-        logger.debug(f"Z has constant columns. Dropping columns: {np.where(constant_columns_Z)[0]}")
-        Z = Z[:, ~constant_columns_Z]  # Keep only non-constant columns
-
-    logger.debug(f"X shape after dropping constant columns: {X.shape}")
-    logger.debug(f"Z shape after dropping constant columns: {Z.shape}")
-
-
-    # Add the constant
+    # Add the constant and the controls
     k = X.shape[1]
-    ones = np.ones((N,1))
+    ones = np.ones((N, 1))
     X = np.hstack((ones, X))
     Z = np.hstack((ones, Z))
-
-    #Add the controls:
     if W is not None:
-        if W.ndim == 1:
-            W = W.reshape(-1, 1)
-        if W.shape[0] != N:
-            raise ValueError(f"W must have the same number of rows as Y. Got W.shape[0] = {W.shape[0]} and Y.shape[0] = {N}.")
         X = np.hstack((X, W))
         Z = np.hstack((Z, W))
         logger.debug("Controls W have been added to both X and Z.\n")
@@ -273,6 +233,9 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
         raise ValueError("Z (with the constant and controls) is rank deficient. Remove collinear instruments or controls.")
     fit = Qz @ (Qz.T @ X)
     logger.debug(f"Fitted values obtained.\n")
+
+    # First-stage F: partial F-test of the excluded instruments, given the constant and controls
+    fs_F, fs_F_pval = first_stage_f(X[:, 1:1 + k], Qz, np.hstack((ones, W)) if W is not None else ones)
 
     # Leverage is the main diagonal of the projection matrix: the row sums of Q squared
     leverage = np.sum(Qz**2, axis=1)
@@ -344,21 +307,6 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
     #Adjustred R2
     ar2 = 1 - (((1-r2)*(N-1))/(N-q))
 
-    #Now, we can add some first stage statistics if the number of endogenous regressors is 1
-    if X.ndim == 2:
-        X_fs = X[:,1]
-        fs_fit = Qz @ (Qz.T @ X_fs)
-        xbar = np.mean(X_fs)
-
-        #First Stage R2
-        fs_r2 = 1 - np.sum((X_fs - fs_fit) ** 2) / np.sum((X_fs - xbar) ** 2)
-
-        #First stage F-stat
-        q_fs = Z.shape[1]
-        e_fs = X_fs - fs_fit
-        fs_F = ((np.sum((fs_fit - xbar) ** 2))/(q_fs-1))/((e_fs.T @ e_fs)/(N-q_fs))
-
-
     return JIVE2Result(beta=beta_jive2,
                        leverage=leverage,
                        fitted_values=fit,
@@ -369,4 +317,6 @@ def JIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
                        root_mse=root_mse,
                        pvals=pvals,
                        tstats=tstats,
-                       cis=cis)
+                       cis=cis,
+                       first_stage_f=fs_F,
+                       first_stage_f_pval=fs_F_pval)

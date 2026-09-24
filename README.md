@@ -43,12 +43,14 @@ result.beta                                    # [constant, coefficient on X, (c
 | `Y` | `(N,)` | Outcome. Must be one-dimensional. |
 | `X` | `(N,)` or `(N, L)` | Endogenous regressors. Do **not** include a constant. |
 | `Z` | `(N,)` or `(N, K)` | Excluded instruments, `K >= L`. Do **not** include a constant. |
-| `W` | `(N,)` or `(N, G)` | Optional exogenous controls. They are added to both `X` and `Z`. |
-| `talk` | bool | `True` prints step-by-step debugging output. |
+| `W` | `(N,)` or `(N, G)` | Optional exogenous controls (the fourth argument). They are added to both `X` and `Z`. |
+| `talk` | bool | Keyword-only. `True` prints step-by-step debugging output. |
 
-Pass `W` by keyword. NumPy arrays and pandas Series / DataFrames are both accepted. A constant is always added, and any constant columns in `X` or `Z` are dropped first.
+NumPy arrays, pandas Series / DataFrames and plain lists are all accepted, and are converted to `float64`. A constant is always added, so any constant columns in `X`, `Z` or `W` are dropped first (a column counts as constant only if it is constant up to floating-point noise, so an instrument with a large mean and a small spread is kept).
 
-The result object has `beta`, `standard_errors` (the full robust covariance matrix, so use `np.sqrt(np.diag(...))` for the standard errors), `tstats`, `pvals`, `cis`, `r_squared`, `adjusted_r_squared`, `f_stat`, `root_mse`, `leverage` and `fitted_values`. It can also be indexed like a dictionary, for example `result['beta']`. `UJIVE2` additionally returns `first_stage_f`.
+The result object has `beta`, `standard_errors` (the full robust covariance matrix, so use `np.sqrt(np.diag(...))` for the standard errors), `tstats`, `pvals`, `cis`, `r_squared`, `adjusted_r_squared`, `f_stat`, `root_mse`, `leverage` and `fitted_values`. It can also be indexed like a dictionary, for example `result['beta']`.
+
+Every estimator also returns `first_stage_f` and `first_stage_f_pval`: the classical (homoskedastic) partial F-test that the excluded instruments jointly explain each endogenous regressor, given the constant and controls. They are floats for one endogenous regressor and arrays (one entry per regressor) otherwise. The usual rule of thumb is that F below 10 signals weak instruments, and `summary()` prints a warning in that case.
 
 ### Estimators
 
@@ -97,9 +99,11 @@ The JIVE coefficients come from `np.linalg.lstsq`, the UJIVE coefficients from `
 
 ### Small samples and error messages
 
-The estimators work for small $N$ as long as the first stage is identified. They raise a `ValueError` with an explanation when it is not:
+The estimators work for small $N$ as long as the first stage is identified. They raise a `ValueError` with an explanation when the inputs cannot support an estimate:
 
 - **`N` must be larger than the number of columns of `Z`** (instruments + constant + controls). With as many columns as observations every leverage is exactly 1 and the jackknife is undefined.
+- **`Y`, `X`, `Z` or `W` contains `NaN` or `inf`, or is not numeric.** Nothing is dropped or imputed silently.
+- **Fewer excluded instruments than endogenous regressors** (under-identified). The estimate would be meaningless, so this is an error.
 - **`Z` is rank deficient.** A collinear instrument or control (for example a duplicated column or a full set of dummies plus the constant) is detected from the QR factor. Drop the redundant column.
 - **A leverage is (numerically) 1.** This happens when one observation is the only one with a given instrument or control value, such as a dummy that is 1 for a single row.
 
