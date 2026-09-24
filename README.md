@@ -18,7 +18,7 @@ from high_dimensional_instrumental_variables.jive1 import JIVE1
 
 ## Jackknife IV estimators: JIVE1, JIVE2, UJIVE1, UJIVE2
 
-These four estimators reduce the many-instruments bias of 2SLS. Each one replaces the usual first-stage fitted value $\hat{x}_i = Z_i\hat{\pi}$ with a version that leaves observation $i$ out of its own first stage. JIVE1 and JIVE2 follow Blomquist and Dahlberg (1999). UJIVE1 and UJIVE2 follow Angrist, Imbens, and Krueger (1999).
+These four estimators reduce the many-instruments bias of 2SLS. Each one replaces the usual first-stage fitted value $\hat{x}_i = Z_i\hat{\pi}$ with a version that leaves observation $i$ out of its own first stage. The names follow the convention of Stata's `jive` command (Poi 2006), in which `ujive1` / `ujive2` are the estimators of Angrist, Imbens, and Krueger (1999). **That differs from the R package and from Kolesár (2013), where "UJIVE" is a different estimator** - see [Naming](#naming-ujive-means-different-things-in-different-software) below.
 
 ### Usage
 
@@ -67,6 +67,21 @@ Write $\tilde{X}$ for the matrix that stacks $\tilde{x}_i$ together with the con
 - **UJIVE1 / UJIVE2** use $\tilde{X}$ as the instrument for $X$: $\hat\beta = (\tilde{X}'X)^{-1}\tilde{X}'Y$.
 
 Standard errors are heteroskedasticity-robust sandwich estimates following Poi (2006), $B^{-1}\big(\sum_i \hat{e}_i^2\,\tilde{x}_i\tilde{x}_i'\big)B^{-T}$, where $B$ is $\tilde{X}'\tilde{X}$ (JIVE) or $\tilde{X}'X$ (UJIVE) and $\hat{e} = Y - X\hat\beta$. The t-tests and confidence intervals use $N - (\text{number of coefficients})$ degrees of freedom.
+
+### Naming: "UJIVE" means different things in different software
+
+We use Stata's `jive` naming (Poi 2006). Other software and papers use "UJIVE" for a different estimator, so results are only comparable when you match the right pair:
+
+| This package | What it computes | Comparable to |
+|---|---|---|
+| `UJIVE1` | Angrist, Imbens, Krueger (1999) **JIVE1**: instrument `X̃` with `(Zπ̂ − hX)/(1−h)` | Stata `jive, ujive1` (the default); **R `jive::jive()`** (Kyle Butts) |
+| `UJIVE2` | Angrist, Imbens, Krueger (1999) **JIVE2**: same with `1 − 1/N` | Stata `jive, ujive2` |
+| `JIVE1`, `JIVE2` | Regress `Y` on the jackknife fit `X̃` (`X̃'X̃`) | Stata `jive, jive1` / `jive2` (to be confirmed) |
+| *(not implemented)* | **Kolesár (2013) UJIVE**: leave-one-out fit on `[Z, W]` minus a leave-one-out fit on the controls `W` alone | R `jive::ujive()`; Stata `sjive, noshrink`; Frandsen et al. |
+
+In short: **our `UJIVE1` is the R package's `jive()`, not its `ujive()`**. In Kolesár's terminology our `UJIVE1` is "JIVE". The two differ only in how the controls are handled; with no controls other than the constant they are still not identical, because the constant is itself a control.
+
+**Checked against R.** On the simulated data in [`validation/`](validation/), our `UJIVE1` reproduces R's `jive()` (coefficient and standard error) to at least six decimals, with and without controls, at N = 300 and N = 60 (`tests/test_r_reference.py`). R's `ujive()` matches none of our estimators. The comparison with Stata's `jive` and `sjive` is set up in `validation/run_stata.do` but has not been run yet, so the Stata column above is based on Kolesár's documentation, not on our own results.
 
 ### How it is computed (no projection matrix)
 

@@ -164,6 +164,8 @@ def UJIVE2(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64
         - The N x N projection matrix Z(Z'Z)^-1 Z' is never formed. The first stage uses a reduced QR decomposition of Z
           (fit = Q Q'X, leverage = row sums of Q squared), and the coefficients and variance come from solve
           instead of an explicit inverse. N must be larger than the number of columns of Z (instruments + constant + controls).
+        - Naming follows Stata's jive command (Poi 2006): UJIVE2 is the Angrist, Imbens, and Krueger (1999) JIVE2 in IV form (denominator 1 - 1/N).
+          It is NOT Kolesar's (2013) UJIVE, which this package does not implement. See the README section on naming.
 
     Example:
         >>> import numpy as np

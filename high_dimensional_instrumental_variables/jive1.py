@@ -176,6 +176,7 @@ def JIVE1(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
         - The N x N projection matrix Z(Z'Z)^-1 Z' is never formed. The first stage uses a reduced QR decomposition of Z
           (fit = Q Q'X, leverage = row sums of Q squared), and the coefficients and variance come from lstsq / solve
           instead of an explicit inverse. N must be larger than the number of columns of Z (instruments + constant + controls).
+        - JIVE1 regresses Y on the jackknife fit (X~'X~), following Stata's jive command naming (Poi 2006). The IV form (X~'X) is UJIVE1 in this package. See the README section on naming.
 
     Example:
         >>> import numpy as np
