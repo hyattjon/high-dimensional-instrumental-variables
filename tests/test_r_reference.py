@@ -23,4 +23,4 @@ def test_ujive1_matches_r_jive(row):
     W = df[["w1", "w2"]] if "w1" in df else None
     res = UJIVE1(df["y"], df["t"], df.filter(regex=r"^z\d+$"), W=W)
     np.testing.assert_allclose(res.beta[1], row.beta, rtol=1e-6)
-    np.testing.assert_allclose(np.sqrt(res.standard_errors[1, 1]), row.se, rtol=1e-6)
+    np.testing.assert_allclose(res.se[1], row.se, rtol=1e-6)

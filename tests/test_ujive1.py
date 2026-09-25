@@ -12,7 +12,7 @@ def test_matches_explicit_projection_matrix(n, k, n_endog, n_controls):
     res = UJIVE1(Y, x, Z, W=W)
     beta, robust_v, leverage = reference("UJIVE1", Y, x, Z, W)
     np.testing.assert_allclose(res.beta, beta, rtol=1e-8, atol=1e-10)
-    np.testing.assert_allclose(res.standard_errors, robust_v, rtol=1e-8, atol=1e-10)
+    np.testing.assert_allclose(res.vcov, robust_v, rtol=1e-8, atol=1e-10)
     np.testing.assert_allclose(res.leverage, leverage, rtol=1e-8, atol=1e-12)
 
 
@@ -21,7 +21,7 @@ def test_output_shapes_and_inference():
     res = UJIVE1(Y, x, Z, W=W)
     n_coef = 1 + 1 + 2  # constant + endogenous + controls
     assert res.beta.shape == (n_coef,)
-    assert res.standard_errors.shape == (n_coef, n_coef)
+    assert res.vcov.shape == (n_coef, n_coef)
     assert res.leverage.shape == (100, 1)
     assert len(res.pvals) == len(res.tstats) == len(res.cis) == n_coef
     assert np.all(np.isfinite(res.beta)) and np.isfinite(res.f_stat)
@@ -32,7 +32,7 @@ def test_small_sample():
     Y, x, Z, _ = make_data(12, 3)
     res = UJIVE1(Y, x, Z)
     assert np.all(np.isfinite(res.beta))
-    assert np.all(np.isfinite(np.diag(res.standard_errors)))
+    assert np.all(np.isfinite(res.se))
 
 
 def test_pandas_input_and_summary(capsys):

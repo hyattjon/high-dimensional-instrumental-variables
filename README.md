@@ -48,9 +48,22 @@ result.beta                                    # [constant, coefficient on X, (c
 
 NumPy arrays, pandas Series / DataFrames and plain lists are all accepted, and are converted to `float64`. A constant is always added, so any constant columns in `X`, `Z` or `W` are dropped first (a column counts as constant only if it is constant up to floating-point noise, so an instrument with a large mean and a small spread is kept).
 
-The result object has `beta`, `standard_errors` (the full robust covariance matrix, so use `np.sqrt(np.diag(...))` for the standard errors), `tstats`, `pvals`, `cis`, `r_squared`, `adjusted_r_squared`, `f_stat`, `root_mse`, `leverage` and `fitted_values`. It can also be indexed like a dictionary, for example `result['beta']`.
+All four estimators return the same kind of result object (`JIVE1Result`, `JIVE2Result`, `UJIVE1Result`, `UJIVE2Result`, all built on one base class). Coefficients are ordered `[constant, endogenous regressors..., controls...]`.
 
-Every estimator also returns `first_stage_f` and `first_stage_f_pval`: the classical (homoskedastic) partial F-test that the excluded instruments jointly explain each endogenous regressor, given the constant and controls. They are floats for one endogenous regressor and arrays (one entry per regressor) otherwise. The usual rule of thumb is that F below 10 signals weak instruments, and `summary()` prints a warning in that case.
+| Attribute | Meaning |
+|---|---|
+| `beta` | Coefficients, shape `(P,)`. |
+| `se` | Standard errors, `sqrt(diag(vcov))`, shape `(P,)`. |
+| `vcov` | Robust covariance matrix of `beta`, shape `(P, P)`. |
+| `tstats`, `pvals` | t-statistics and two-sided p-values, arrays of shape `(P,)`. |
+| `cis` | 95% confidence intervals (lower, upper), shape `(P, 2)`. |
+| `f_stat`, `f_pval` | **Robust Wald test** that all coefficients except the constant are zero, reported as an F-statistic with `(P-1, N-P)` degrees of freedom. |
+| `first_stage_f`, `first_stage_f_pval` | Partial first-stage F-test that the excluded instruments jointly explain each endogenous regressor, given the constant and controls (classical, homoskedastic). A float for one endogenous regressor, otherwise one entry per regressor. F below 10 is the usual rule of thumb for weak instruments, and `summary()` warns in that case. |
+| `root_mse` | `sqrt(RSS / (N - P))` from the structural residuals `Y - X beta`. |
+| `r_squared`, `adjusted_r_squared` | `1 - RSS/TSS` from the same residuals. **For IV this is not a goodness-of-fit measure**: it can be negative and is not comparable to an OLS R-squared. |
+| `leverage`, `fitted_values` | Leverage of each observation, and the ordinary first-stage fitted values of the endogenous regressors. |
+
+The result can also be indexed like a dictionary, for example `result['beta']`. `result.standard_errors` still works but is a deprecated alias of `vcov` (it was always the covariance matrix, not the standard errors) and emits a `DeprecationWarning`.
 
 ### Estimators
 
@@ -69,6 +82,8 @@ Write $\tilde{X}$ for the matrix that stacks $\tilde{x}_i$ together with the con
 - **UJIVE1 / UJIVE2** use $\tilde{X}$ as the instrument for $X$: $\hat\beta = (\tilde{X}'X)^{-1}\tilde{X}'Y$.
 
 Standard errors are heteroskedasticity-robust sandwich estimates following Poi (2006), $B^{-1}\big(\sum_i \hat{e}_i^2\,\tilde{x}_i\tilde{x}_i'\big)B^{-T}$, where $B$ is $\tilde{X}'\tilde{X}$ (JIVE) or $\tilde{X}'X$ (UJIVE) and $\hat{e} = Y - X\hat\beta$. The t-tests and confidence intervals use $N - (\text{number of coefficients})$ degrees of freedom.
+
+**Inference conventions.** The covariance has no finite-sample correction, and tests and intervals use a t distribution with $N - P$ degrees of freedom ($P$ = number of coefficients). R's `jive()` uses z-based inference and an optional small-sample correction (`ssc`), and Stata's `jive` reports homoskedastic standard errors by default, so compare coefficients and standard errors (as [`validation/`](validation/) does) rather than p-values and intervals.
 
 ### Naming: "UJIVE" means different things in different software
 
@@ -115,6 +130,14 @@ With few observations per instrument the leverages are large, so the jackknife f
 pip install pytest
 pytest
 ```
+
+### Changes in 0.2.0
+
+- **Fixed:** a positional `W` was silently ignored (the unused `G` argument is removed; `W` is the fourth argument and `talk` is keyword-only); real instruments with a large mean and small spread were dropped as "constant"; the first-stage F was wrong when there were controls; `JIVE1` had no intercept without controls and `JIVE2` ignored `W`.
+- **Input checks:** `NaN` / `inf`, non-numeric data and under-identified models now raise clear errors; lists are accepted.
+- **Changed:** `f_stat` is now a robust Wald F-statistic (it used an OLS-style formula that is invalid for IV); `pvals`, `tstats` and `cis` are always NumPy arrays; `standard_errors` is deprecated in favour of `vcov` and `se`.
+- **Added:** `first_stage_f` and `first_stage_f_pval` on every estimator; `se`, `vcov`, `f_pval`.
+- **Internal:** the four estimators share one implementation, so a fix applies to all of them.
 
 ### Other estimators
 

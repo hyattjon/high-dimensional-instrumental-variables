@@ -9,6 +9,7 @@ Welcome to high-dimensional-instrumental-variables's documentation!
    jive2
    ujive1
    ujive2
+   results
 
 
 Indices and tables

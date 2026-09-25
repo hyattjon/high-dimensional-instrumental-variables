@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "high-dimensional-instrumental-variables"
-version = "0.1.2"
+version = "0.2.0"
 authors = [
   { name="Jonathan Hyatt", email="hyatt.jonathan99@gmail.com" },
   { name="Jacob Hutchings", email="jacobhutchings1@gmail.com" }

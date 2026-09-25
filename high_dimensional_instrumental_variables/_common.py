@@ -37,7 +37,8 @@ def drop_constant_columns(A, name, logger):
     A column counts as constant only if its range is a few ulps of its largest entry. (A relative tolerance like
     np.isclose's default would treat, say, an instrument with mean 1e6 and sd 0.5 as constant.)
     """
-    constant = np.ptp(A, axis=0) <= 4 * np.finfo(np.float64).eps * np.max(np.abs(A), axis=0)
+    hi, lo = A.max(axis=0), A.min(axis=0)  # per-column extremes; avoids allocating a full-size copy like np.abs(A)
+    constant = (hi - lo) <= 4 * np.finfo(np.float64).eps * np.maximum(np.abs(hi), np.abs(lo))
     if np.any(constant):
         logger.debug(f"{name} has constant columns. Dropping columns: {np.where(constant)[0]}")
         A = A[:, ~constant]

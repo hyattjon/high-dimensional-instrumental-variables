@@ -29,7 +29,7 @@ def ours(name):
     rows = []
     for label, f in ESTIMATORS.items():
         r = f(df["y"], df["t"], Z, W=W)
-        rows.append({"dataset": name, "source": f"ours {label}", "beta": r.beta[1], "se": np.sqrt(r.standard_errors[1, 1])})
+        rows.append({"dataset": name, "source": f"ours {label}", "beta": r.beta[1], "se": r.se[1]})
     return rows
 
 
