@@ -16,3 +16,6 @@ docs/_build/
 # Editor / OS
 .vscode/
 .DS_Store
+
+# Monte Carlo output (large; regenerate with simulation/monte_carlo.py)
+simulation/results/
