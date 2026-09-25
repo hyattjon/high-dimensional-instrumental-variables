@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>results &#8212; high-dimensional-instrumental-variables 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=47202671" />
+    <link rel="stylesheet" type="text/css" href="_static/haiku.css?v=fce32b03" />
+    <script src="_static/documentation_options.js?v=8d563738"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="ujive2" href="ujive2.html" /> 
+  </head><body>
+      <div class="header" role="banner"><h1 class="heading"><a href="index.html">
+          <span>high-dimensional-instrumental-variables 1.0.0 documentation</span></a></h1>
+        <h2 class="heading"><span>results</span></h2>
+      </div>
+      <div class="topnav" role="navigation" aria-label="Top">
+      
+        <p>
+        «&#160;&#160;<a href="ujive2.html">ujive2</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content" role="main">
+        
+        
+  <section id="results">
+<h1>results<a class="headerlink" href="#results" title="Link to this heading">¶</a></h1>
+<p>All four estimators return a subclass of <code class="xref py py-class docutils literal notranslate"><span class="pre">IVResult</span></code>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="high_dimensional_instrumental_variables._results.IVResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">high_dimensional_instrumental_variables._results.</span></span><span class="sig-name descname"><span class="pre">IVResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vcov</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leverage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fitted_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tstats</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pvals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_mse</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_squared</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjusted_r_squared</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_stat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_pval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">first_stage_f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">first_stage_f_pval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#high_dimensional_instrumental_variables._results.IVResult" title="Link to this definition">¶</a></dt>
+<dd><p>Results of a jackknife IV regression.</p>
+<p>The coefficient vector is ordered <code class="docutils literal notranslate"><span class="pre">[constant,</span> <span class="pre">endogenous</span> <span class="pre">regressors...,</span> <span class="pre">controls...]</span></code>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="high_dimensional_instrumental_variables._results.IVResult.beta">
+<span class="sig-name descname"><span class="pre">beta</span></span><a class="headerlink" href="#high_dimensional_instrumental_variables._results.IVResult.beta" title="Link to this definition">¶</a></dt>
+<dd><p>Estimated coefficients.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray, shape (P,)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="high_dimensional_instrumental_variables._results.IVResult.vcov">
+<span class="sig-name descname"><span class="pre">vcov</span></span><a class="headerlink" href="#high_dimensional_instrumental_variables._results.IVResult.vcov" title="Link to this definition">¶</a></dt>
+<dd><p>Heteroskedasticity-robust covariance matrix of <code class="docutils literal notranslate"><span class="pre">beta</span></code> (a sandwich estimator following Poi (2006), with no
+finite-sample correction).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray, shape (P, P)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="high_dimensional_instrumental_variables._results.IVResult.leverage">
+<span class="sig-name descname"><span class="pre">leverage</span></span><a class="headerlink" href="#high_dimensional_instrumental_variables._results.IVResult.leverage" title="Link to this definition">¶</a></dt>
+<dd><p>Leverage (diagonal of the first-stage projection matrix) of each observation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray, shape (N, 1)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="high_dimensional_instrumental_variables._results.IVResult.fitted_values">
+<span class="sig-name descname"><span class="pre">fitted_values</span></span><a class="headerlink" href="#high_dimensional_instrumental_variables._results.IVResult.fitted_values" title="Link to this definition">¶</a></dt>
+<dd><p>Ordinary first-stage fitted values of the endogenous regressors, before the jackknife correction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray, shape (N, L)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">tstats,</span> <span class="pre">pvals</span></span></dt>
+<dd><p>t-statistics and two-sided p-values, using a t distribution with <code class="docutils literal notranslate"><span class="pre">N</span> <span class="pre">-</span> <span class="pre">P</span></code> degrees of freedom.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray, shape (P,)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="high_dimensional_instrumental_variables._results.IVResult.cis">
+<span class="sig-name descname"><span class="pre">cis</span></span><a class="headerlink" href="#high_dimensional_instrumental_variables._results.IVResult.cis" title="Link to this definition">¶</a></dt>
+<dd><p>95% confidence intervals (lower, upper), from the same t distribution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray, shape (P, 2)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="high_dimensional_instrumental_variables._results.IVResult.root_mse">
+<span class="sig-name descname"><span class="pre">root_mse</span></span><a class="headerlink" href="#high_dimensional_instrumental_variables._results.IVResult.root_mse" title="Link to this definition">¶</a></dt>
+<dd><p>Root mean squared error, <code class="docutils literal notranslate"><span class="pre">sqrt(RSS</span> <span class="pre">/</span> <span class="pre">(N</span> <span class="pre">-</span> <span class="pre">P))</span></code>, with residuals <code class="docutils literal notranslate"><span class="pre">Y</span> <span class="pre">-</span> <span class="pre">X</span> <span class="pre">beta</span></code> from the structural equation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">r_squared,</span> <span class="pre">adjusted_r_squared</span></span></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">RSS</span> <span class="pre">/</span> <span class="pre">TSS</span></code> and its degrees-of-freedom adjustment, computed from the structural residuals. <strong>For IV this
+is not a goodness-of-fit measure</strong>: it can be negative and its value is not comparable to an OLS R-squared.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">f_stat,</span> <span class="pre">f_pval</span></span></dt>
+<dd><p>Heteroskedasticity-robust Wald test that all coefficients except the constant are zero, reported as an
+F-statistic (Wald / (P - 1)) with (P - 1, N - P) degrees of freedom.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">first_stage_f,</span> <span class="pre">first_stage_f_pval</span></span></dt>
+<dd><p>Partial first-stage F-test (classical, homoskedastic) that the excluded instruments jointly explain each
+endogenous regressor, given the constant and controls. A float for one endogenous regressor, otherwise one
+entry per regressor. The usual rule of thumb is that F &lt; 10 signals weak instruments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float or ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Notes</p>
+<p><code class="docutils literal notranslate"><span class="pre">se</span></code> is the vector of standard errors, <code class="docutils literal notranslate"><span class="pre">sqrt(diag(vcov))</span></code>. <code class="docutils literal notranslate"><span class="pre">standard_errors</span></code> is a deprecated alias of <code class="docutils literal notranslate"><span class="pre">vcov</span></code>
+(it has always been the covariance matrix, not the standard errors).</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="high_dimensional_instrumental_variables._results.IVResult.se">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">se</span></span><a class="headerlink" href="#high_dimensional_instrumental_variables._results.IVResult.se" title="Link to this definition">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">sqrt(diag(vcov))</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Standard errors of <code class="docutils literal notranslate"><span class="pre">beta</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="high_dimensional_instrumental_variables._results.IVResult.summary">
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#high_dimensional_instrumental_variables._results.IVResult.summary" title="Link to this definition">¶</a></dt>
+<dd><p>Print a regression table (coefficients, robust standard errors, t-tests, confidence intervals) and fit statistics.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+      </div>
+      <div class="bottomnav" role="navigation" aria-label="Bottom">
+      
+        <p>
+        «&#160;&#160;<a href="ujive2.html">ujive2</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2025, Jonathan Hyatt, Jacob Hutchings.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
+    </div>
+  </body>
+</html>
