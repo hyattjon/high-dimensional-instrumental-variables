@@ -10,7 +10,7 @@
 * STATUS: run successfully (Stata 19 MP); results are in validation/results_stata.csv and results_stata.log.
 * Findings, checked against our estimators in validation/compare.py and tests/test_stata_reference.py:
 *   jive, ujive1 / ujive2 (robust)  == our UJIVE1 / UJIVE2 (coefficient and SE)
-*   jive, jive1 / jive2             == our JIVE1 / JIVE2 (coefficient only; the SEs differ)
+*   jive, jive1 / jive2             == our JIVE1 / JIVE2 (coefficient; the SEs differ because of a bug in jive.ado's CalcJIVE, see validation/README.md)
 *   sjive, noshrink                 != R ujive() (Kolesar 2013): it also leaves observation i out of Y's partialling
 * sjive with noshrink needed a one-line fix to run (see validation/README.md).
 

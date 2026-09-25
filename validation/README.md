@@ -19,13 +19,22 @@ run without R or Stata. `results_stata.csv` is added once the do-file has been r
 | our `UJIVE1` vs R `jive()` | equal to ~1e-15 | equal to ~1e-15 |
 | our `UJIVE1` vs Stata `jive, ujive1 robust` | equal to ~3e-8 | equal to ~3e-8 |
 | our `UJIVE2` vs Stata `jive, ujive2 robust` | equal to ~4e-8 | equal to ~3e-8 |
-| our `JIVE1` / `JIVE2` vs Stata `jive, jive1` / `jive2` | equal to ~3e-8 | **differ** (0.4-4% vs Stata `robust`) |
+| our `JIVE1` / `JIVE2` vs Stata `jive, jive1` / `jive2` | equal to ~3e-8 | **differ** (0.4-4%): Stata's `jive.ado` has a bug in this routine, see below |
 | R `ujive()` (Kolesar 2013) | not implemented here; equals `P'Y / P'T` exactly | |
 | Stata `sjive, noshrink` | not implemented here; equals an IV of leave-one-out-residualised `Y` on `T` (1e-8) | |
 
 Other Stata numbers that match ours for `UJIVE1`: Root MSE, R-squared, overall (Wald) F, first-stage F(10, 289).
-The Stata `jive1`/`jive2` Root MSE and R-squared match none of the residual definitions we tried, and its standard
-errors for that pair are not reproduced; that would need Poi's `jive.ado`.
+### Why the `JIVE1` / `JIVE2` standard errors differ from Stata's
+
+Poi's `jive.ado` (Stata Journal package st0108, version 1.0.2, 17 Apr 2006) computes the residual for the variance with
+`matrix colnames beta = end1 exog one` followed by `matrix score`. `CalcUJIVE` defines `one` (`tempvar one`, line 295), so
+the constant column is named correctly. `CalcJIVE` (line 337) uses `` `one' `` but never defines it, so the name list is one
+name short and the constant's coefficient ends up on the last regressor. The residual is then `Y - (b_t + b_cons) T` with no
+controls, or `Y - b_t T - ... - (b_last + b_cons) W_last` with controls, instead of `Y - X b`. Its Root MSE, R-squared,
+default and robust standard errors all follow from that residual: the rule reproduces all 12 `jive1`/`jive2` standard
+errors (three data sets, default and robust) to 1e-8, and the Root MSE 3.5927 that Stata prints. The code's own comment
+says the intent is `Y - X b` ("Use endogenous vars for residuals, not the predicted vars"), which is what we compute.
+We do not copy Poi's source into this repository; download it with `net install st0108, from(http://www.stata-journal.com/software/sj6-3)`.
 
 See the "Naming" section of the top-level README for why "UJIVE" means different things in Stata, R and the papers.
 

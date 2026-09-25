@@ -44,11 +44,47 @@ def test_ujive_robust_standard_error_equals_stata(option, dataset):
 @pytest.mark.parametrize("dataset", DATASETS)
 @pytest.mark.parametrize("option", ["jive1", "jive2"])
 def test_jive_standard_error_is_close_to_but_not_equal_to_stata(option, dataset):
-    """Known gap: Stata's jive1/jive2 use a residual scale we could not reproduce (see README, section on naming).
+    """Ours differ from Stata's jive1/jive2 standard errors on purpose: Stata's jive.ado has a bug in CalcJIVE.
 
-    This pins down how far off we are, so a change that makes it worse is noticed. If the formula is ever matched,
-    tighten this to assert equality and move `jive1` / `jive2` up into the test above.
+    We use the intended residual Y - X b. The test at the bottom of this file reproduces Stata's numbers from the bug.
+    This one only pins down how far apart the two are, so an unrelated change that moves ours is noticed.
     """
     _, se = ours(option, dataset)
     stata = STATA.loc[(dataset, f"Stata jive, {option} robust")].se
     assert abs(se - stata) / stata < 0.05
+
+
+def stata_jive_standard_errors(estimator, dataset):
+    """Reproduce Stata's jive1 / jive2 standard errors, bug included (see validation/README.md).
+
+    Poi's jive.ado names the coefficient columns with a macro (`one`) that its CalcJIVE routine never defines, so the
+    constant's coefficient is attached to the last regressor when the residual is formed: e = Y - X b with
+    b_last += b_constant, instead of e = Y - X b with the constant as an intercept. Default and robust standard errors
+    are then computed from that residual.
+    """
+    df = pd.read_csv(VALIDATION / "data" / f"{dataset}.csv")
+    W = df[["w1", "w2"]].values if "w1" in df else np.empty((len(df), 0))
+    Y, T = df["y"].values, df["t"].values
+    res = ESTIMATORS[estimator](df["y"], df["t"], df.filter(regex=r"^z\d+$"), W=W if W.size else None)
+    n, k = len(Y), len(res.beta)
+    h = res.leverage[:, 0]
+    denominator = (1 - h) if estimator == "jive1" else (1 - 1 / n)
+    X_tilde = np.column_stack([(res.fitted_values[:, 0] - h * T) / denominator, W, np.ones(n)])  # Stata orders [T, controls, constant]
+    b = np.concatenate([[res.beta[1]], res.beta[2:], [res.beta[0]]])
+    regressors = np.column_stack([T, W])
+    coef = b[:-1].copy()
+    coef[-1] += b[-1]                                  # the bug: the constant's coefficient lands on the last regressor
+    e = Y - regressors @ coef
+    bread = np.linalg.inv(X_tilde.T @ X_tilde)
+    sigsq = np.var(e, ddof=1) * (n - 1) / (n - k)
+    default = np.sqrt(sigsq * bread[0, 0])
+    robust = np.sqrt((bread @ ((X_tilde * (e ** 2)[:, None]).T @ X_tilde) @ bread)[0, 0])
+    return default, robust
+
+
+@pytest.mark.parametrize("dataset", DATASETS)
+@pytest.mark.parametrize("option", ["jive1", "jive2"])
+def test_stata_jive_standard_errors_are_explained_by_the_jive_ado_bug(option, dataset):
+    default, robust = stata_jive_standard_errors(option, dataset)
+    np.testing.assert_allclose(default, STATA.loc[(dataset, f"Stata jive, {option}")].se, rtol=1e-6)
+    np.testing.assert_allclose(robust, STATA.loc[(dataset, f"Stata jive, {option} robust")].se, rtol=1e-6)

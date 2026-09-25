@@ -50,7 +50,7 @@ def JIVE1(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64]
         - first_stage_f / first_stage_f_pval: the partial first-stage F-test (classical, homoskedastic) that the excluded instruments jointly
           explain each endogenous regressor, given the constant and controls. The usual rule of thumb is that F < 10 signals weak instruments.
         - Naming follows Stata's jive command (Poi 2006). The IV form of this estimator, beta = (X~'X)^-1 X~'Y, is UJIVE1 in this package. Coefficients equal Stata jive with jive1 (verified: see validation/); Stata's
-          reported standard errors for jive1 differ from ours, see the README section on naming.
+          reported standard errors for jive1 differ from ours because of a bug in Stata's jive.ado (see the README section on naming).
 
     Example:
         >>> import numpy as np
