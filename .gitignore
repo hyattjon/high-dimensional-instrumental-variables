@@ -18,4 +18,6 @@ docs/_build/
 .DS_Store
 
 # Monte Carlo output (large; regenerate with simulation/monte_carlo.py)
-simulation/results/
+simulation/results*/cells/
+simulation/results*/draws/
+simulation/results*/config.json

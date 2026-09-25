@@ -85,6 +85,10 @@ Standard errors are heteroskedasticity-robust sandwich estimates following Poi (
 
 **Inference conventions.** The covariance has no finite-sample correction, and tests and intervals use a t distribution with $N - P$ degrees of freedom ($P$ = number of coefficients). R's `jive()` uses z-based inference and an optional small-sample correction (`ssc`), and Stata's `jive` reports homoskedastic standard errors by default, so compare coefficients and standard errors (as [`validation/`](validation/) does) rather than p-values and intervals.
 
+### Which estimator to use
+
+A Monte Carlo study ([`simulation/`](simulation/)) compares them with many, possibly weak, instruments (`N = 500`, up to 100 instruments). **`UJIVE1` and `UJIVE2` are recommended**: they are close to median-unbiased and their 95% intervals cover between 0.94 and 0.98 in every design, including heteroskedastic errors and very weak instruments (where the intervals become very wide, as they should). **`JIVE1` and `JIVE2` are not recommended with many instruments**: they are biased toward zero (median bias down to about -0.88 when the truth is 1) and their standard errors are too small, so their intervals cover almost never in the many-instrument designs. 2SLS is shown for contrast: its bias grows with the number of instruments and its intervals fail badly.
+
 ### Naming: "UJIVE" means different things in different software
 
 We use Stata's `jive` naming (Poi 2006). Other software and papers use "UJIVE" for a different estimator, so results are only comparable when you match the right pair:
