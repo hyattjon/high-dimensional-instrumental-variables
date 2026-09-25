@@ -49,8 +49,8 @@ def UJIVE1(Y: NDArray[np.float64], X: NDArray[np.float64], Z: NDArray[np.float64
           confidence intervals use a t distribution with N minus the number of coefficients degrees of freedom.
         - first_stage_f / first_stage_f_pval: the partial first-stage F-test (classical, homoskedastic) that the excluded instruments jointly
           explain each endogenous regressor, given the constant and controls. The usual rule of thumb is that F < 10 signals weak instruments.
-        - Naming follows Stata's jive command (Poi 2006): UJIVE1 is the Angrist, Imbens, and Krueger (1999) JIVE1 in IV form, i.e. the R package jive::jive() (Kyle Butts).
-          It is NOT Kolesar's (2013) UJIVE (R jive::ujive(), Stata sjive with noshrink), which this package does not implement. See the README section on naming.
+        - Naming follows Stata's jive command (Poi 2006): UJIVE1 is the Angrist, Imbens, and Krueger (1999) JIVE1 in IV form, i.e. the R package jive::jive() (Kyle Butts) and Stata jive with ujive1 (verified: see validation/).
+          It is NOT Kolesar's (2013) UJIVE (R jive::ujive()), which this package does not implement. See the README section on naming.
 
     Example:
         >>> import numpy as np

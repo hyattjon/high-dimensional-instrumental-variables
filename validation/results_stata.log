@@ -1,0 +1,677 @@
+-------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  <project-dir>/validation/results_stata.txt
+  log type:  text
+ opened on:  24 Sep 2026, 19:14:55
+
+. do validation/run_stata.do
+
+. * Run Stata's JIVE commands on the shared data sets and write validation/resu
+> lts_stata.csv.
+. *
+. * Run from the repo root:   do validation/run_stata.do
+. * Needs (once):
+. *   ssc install sjive                      // Frandsen, Lefgren, Leslie, McIn
+> tyre; `noshrink` gives Kolesar's UJIVE
+. *   Poi (2006), "Jackknife instrumental variables estimation in Stata", Stata
+>  Journal 6(3): the `jive` command.
+. *   It is NOT on SSC. Find it with `findit jive` or `search jackknife instrum
+> ental` and install from the
+. *   Stata Journal link. If `jive` is missing, that block is skipped and the r
+> est still runs.
+. *
+. * STATUS: written without access to Stata, so the `jive` option names below (
+> jive1 jive2 ujive1 ujive2, robust)
+. * are from documentation, not tested. Every call is wrapped in `capture`, so 
+> a wrong option just prints an
+. * error and moves on. Check `help jive` and paste back anything that errors.
+. *
+. * What we expect to see (see the README "Naming" section):
+. *   jive, ujive1  == our UJIVE1 == R jive()          (Angrist, Imbens, Kruege
+> r 1999 JIVE1)
+. *   jive, jive1   == our JIVE1                        (to be confirmed by thi
+> s run)
+. *   sjive, noshrink == R ujive()  (Kolesar 2013 UJIVE), which this package do
+> es not implement
+. 
+. clear all
+
+. set more off
+
+. 
+. tempname h
+
+. tempfile res
+
+. postfile `h' str30 dataset str40 source double beta double se using `res', re
+> place
+(file <scratch>/St3202770.000001 not found)
+
+. 
+. foreach ds in n300_k10_nocontrols n300_k10_controls n60_k8_controls {
+  2.     import delimited "validation/data/`ds'.csv", clear varnames(1)
+  3.     quietly ds z*
+  4.     local zs `r(varlist)'
+  5.     capture confirm variable w1
+  6.     if _rc == 0 {
+  7.         local ws "w1 w2"
+  8.     }
+  9.     else {
+ 10.         local ws ""
+ 11.     }
+ 12. 
+.     display as text _newline "=== `ds' ==="
+ 13. 
+.     * sjive without shrinkage = Kolesar's UJIVE (Stata's ivregress 2sls y (t 
+> = P_hat) controls)
+.     capture noisily sjive y `ws' (t = `zs'), noshrink
+ 14.     if _rc == 0 {
+ 15.         capture post `h' ("`ds'") ("Stata sjive, noshrink") (_b[t]) (_se[t
+> ])
+ 16.     }
+ 17. 
+.     * Poi's jive command, all four variants; with and without robust standard
+>  errors
+.     foreach opt in jive1 jive2 ujive1 ujive2 {
+ 18.         capture noisily jive y `ws' (t = `zs'), `opt'
+ 19.         if _rc == 0 {
+ 20.             capture post `h' ("`ds'") ("Stata jive, `opt'") (_b[t]) (_se[t
+> ])
+ 21.             if _rc != 0 display as error "jive, `opt' ran but _b[t] was no
+> t found; check ereturn list"
+ 22.         }
+ 23.         capture noisily jive y `ws' (t = `zs'), `opt' robust
+ 24.         if _rc == 0 {
+ 25.             capture post `h' ("`ds'") ("Stata jive, `opt' robust") (_b[t])
+>  (_se[t])
+ 26.         }
+ 27.     }
+ 28. }
+(encoding automatically selected: ISO-8859-2)
+(12 vars, 300 obs)
+
+=== n300_k10_nocontrols ===
+Computing shrinkage parameter. . .
+Computing adjusted standard error. . .
+
+Shrunken Jackknife IV Estimation                      Number of obs =      300
+                                               Excluded instruments =       10
+------------------------------------------------------------------------------
+          y  | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |    2.11374   .2137173     9.89   0.000     1.694861    2.532618
+       _cons |  -.3876102   .2436395    -1.59   0.112    -.8651349    .0899145
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE1)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   1,   298)  =  126.70
+F(  10,   289)  =   18.93                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7544
+R-squared       =  0.3957                            Adj R-squared   =  0.7536
+                                                     Root MSE        =  3.5927
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   1.974716   .1754373    11.26   0.000     1.629463    2.319969
+       _cons |   1.277251   .2098674     6.09   0.000     .8642406    1.690261
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE1)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   1,   298)  =   96.44
+F(  10,   289)  =   18.93                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7544
+R-squared       =  0.3957                            Adj R-squared   =  0.7536
+                                                     Root MSE        =  3.5927
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   1.974716   .2010782     9.82   0.000     1.579003    2.370429
+       _cons |   1.277251   .2212848     5.77   0.000     .8417716    1.712729
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE2)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   1,   298)  =  126.27
+F(  10,   289)  =   18.93                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7549
+R-squared       =  0.3957                            Adj R-squared   =  0.7541
+                                                     Root MSE        =  3.5888
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.048246   .1822804    11.24   0.000     1.689526    2.406966
+       _cons |   1.276664   .2096596     6.09   0.000     .8640627    1.689265
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE2)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   1,   298)  =   93.50
+F(  10,   289)  =   18.93                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7549
+R-squared       =  0.3957                            Adj R-squared   =  0.7541
+                                                     Root MSE        =  3.5888
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.048246   .2118301     9.67   0.000     1.631373    2.465118
+       _cons |   1.276664   .2214571     5.76   0.000     .8408456    1.712482
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE1)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   1,   298)  =   88.87
+F(  10,   289)  =   18.93                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.6499
+R-squared       =  0.3957                            Adj R-squared   =  0.6487
+                                                     Root MSE        =  4.2897
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.095625   .2222977     9.43   0.000     1.658152    2.533097
+       _cons |   1.252152   .2510002     4.99   0.000     .7581949     1.74611
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE1)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   1,   298)  =   97.84
+F(  10,   289)  =   18.93                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.6499
+R-squared       =  0.3957                            Adj R-squared   =  0.6487
+                                                     Root MSE        =  4.2897
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.095625   .2118588     9.89   0.000     1.678696    2.512553
+       _cons |   1.252152   .2434879     5.14   0.000     .7729788    1.731326
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE2)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   1,   298)  =   88.20
+F(  10,   289)  =   18.93                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.6492
+R-squared       =  0.3957                            Adj R-squared   =  0.6480
+                                                     Root MSE        =  4.2940
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.091494   .2227028     9.39   0.000     1.653225    2.529764
+       _cons |    1.25291   .2512555     4.99   0.000     .7584499     1.74737
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE2)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   1,   298)  =   96.54
+F(  10,   289)  =   18.93                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.6492
+R-squared       =  0.3957                            Adj R-squared   =  0.6480
+                                                     Root MSE        =  4.2940
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.091494    .212863     9.83   0.000     1.672589      2.5104
+       _cons |    1.25291   .2437023     5.14   0.000     .7733143    1.732505
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+(encoding automatically selected: ISO-8859-2)
+(14 vars, 300 obs)
+
+=== n300_k10_controls ===
+Computing shrinkage parameter. . .
+Computing adjusted standard error. . .
+
+Shrunken Jackknife IV Estimation                      Number of obs =      300
+                                               Excluded instruments =       10
+------------------------------------------------------------------------------
+          y  | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.272318   .2141161    10.61   0.000     1.852659    2.691978
+       _cons |   .3877606   .2525803     1.54   0.125    -.1072876    .8828089
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE1)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   3,   296)  =  112.89
+F(  10,   287)  =   23.15                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7238
+R-squared       =  0.5769                            Adj R-squared   =  0.7210
+                                                     Root MSE        =  3.9305
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.082961   .1823249    11.42   0.000     1.724144    2.441779
+          w1 |   .7085529   .2734142     2.59   0.010     .1704709    1.246635
+          w2 |   1.429904   .2180973     6.56   0.000     1.000686    1.859122
+       _cons |   .9905316   .2283211     4.34   0.000     .5411932     1.43987
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE1)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   3,   296)  =  110.55
+F(  10,   287)  =   23.15                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7238
+R-squared       =  0.5769                            Adj R-squared   =  0.7210
+                                                     Root MSE        =  3.9305
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.082961   .1832553    11.37   0.000     1.722313     2.44361
+          w1 |   .7085529   .2527907     2.80   0.005     .2110581    1.206048
+          w2 |   1.429904   .2262346     6.32   0.000     .9846719    1.875136
+       _cons |   .9905316   .2348757     4.22   0.000     .5282936     1.45277
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE2)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   3,   296)  =  117.64
+F(  10,   287)  =   23.15                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7350
+R-squared       =  0.5769                            Adj R-squared   =  0.7323
+                                                     Root MSE        =  3.8501
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.173293   .1863864    11.66   0.000     1.806482    2.540103
+          w1 |   .7184754   .2673055     2.69   0.008     .1924152    1.244536
+          w2 |   1.432211    .213614     6.70   0.000     1.011817    1.852606
+       _cons |    .989562   .2236431     4.42   0.000       .54943    1.429694
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE2)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   3,   296)  =  114.94
+F(  10,   287)  =   23.15                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7350
+R-squared       =  0.5769                            Adj R-squared   =  0.7323
+                                                     Root MSE        =  3.8501
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.173293   .1862192    11.67   0.000     1.806812    2.539774
+          w1 |   .7184754   .2488938     2.89   0.004     .2286497    1.208301
+          w2 |   1.432211   .2216978     6.46   0.000     .9959077    1.868515
+       _cons |    .989562   .2302124     4.30   0.000     .5365015    1.442622
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE1)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   3,   296)  =  130.23
+F(  10,   287)  =   23.15                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7606
+R-squared       =  0.5769                            Adj R-squared   =  0.7582
+                                                     Root MSE        =  3.6595
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |    2.22118   .1810186    12.27   0.000     1.864934    2.577427
+          w1 |   .5758168   .2616043     2.20   0.029     .0609768    1.090657
+          w2 |   1.414506   .2032086     6.96   0.000      1.01459    1.814423
+       _cons |   1.009063   .2127329     4.74   0.000     .5904028    1.427724
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE1)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   3,   296)  =  139.94
+F(  10,   287)  =   23.15                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7606
+R-squared       =  0.5769                            Adj R-squared   =  0.7582
+                                                     Root MSE        =  3.6595
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |    2.22118   .1809055    12.28   0.000     1.865156    2.577204
+          w1 |   .5758168   .2543705     2.26   0.024     .0752129    1.076421
+          w2 |   1.414506   .1998779     7.08   0.000     1.021145    1.807868
+       _cons |   1.009063   .2122125     4.75   0.000     .5914269      1.4267
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE2)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   3,   296)  =  130.32
+F(  10,   287)  =   23.15                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7608
+R-squared       =  0.5769                            Adj R-squared   =  0.7584
+                                                     Root MSE        =  3.6580
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.222897   .1811281    12.27   0.000     1.866435    2.579359
+          w1 |   .5741719   .2616131     2.19   0.029     .0593145    1.089029
+          w2 |   1.414273   .2031275     6.96   0.000     1.014515     1.81403
+       _cons |   1.009276   .2126472     4.75   0.000      .590784    1.427768
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE2)
+
+First-stage summary                                  Number of obs   =     300
+-------------------------                            F(   3,   296)  =  139.88
+F(  10,   287)  =   23.15                            Prob > F        =  0.0000
+Prob > F        =  0.0000                            R-squared       =  0.7608
+R-squared       =  0.5769                            Adj R-squared   =  0.7584
+                                                     Root MSE        =  3.6580
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   2.222897   .1808633    12.29   0.000     1.866956    2.578838
+          w1 |   .5741719   .2540927     2.26   0.025     .0741148    1.074229
+          w2 |   1.414273   .1997426     7.08   0.000     1.021177    1.807368
+       _cons |   1.009276   .2121124     4.76   0.000     .5918364    1.426715
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8 z9 z10
+------------------------------------------------------------------------------
+(encoding automatically selected: ISO-8859-2)
+(12 vars, 60 obs)
+
+=== n60_k8_controls ===
+Computing shrinkage parameter. . .
+Computing adjusted standard error. . .
+
+Shrunken Jackknife IV Estimation                      Number of obs =       60
+                                               Excluded instruments =        8
+------------------------------------------------------------------------------
+          y  | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   1.785864   .7206216     2.48   0.013     .3734716    3.198256
+       _cons |   1.338557   .8757202     1.53   0.126    -.3778233    3.054937
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE1)
+
+First-stage summary                                  Number of obs   =      60
+-------------------------                            F(   3,    56)  =    4.78
+F(   8,    49)  =    4.01                            Prob > F        =  0.0049
+Prob > F        =  0.0010                            R-squared       =  0.3931
+R-squared       =  0.5405                            Adj R-squared   =  0.3606
+                                                     Root MSE        =  6.1040
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   .6734459   .6129233     1.10   0.277    -.5543871    1.901279
+          w1 |   2.024353    .999543     2.03   0.048     .0220279    4.026678
+          w2 |   .5892788   .9184645     0.64   0.524    -1.250627    2.429184
+       _cons |  -.5797464   .8566749    -0.68   0.501    -2.295872     1.13638
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE1)
+
+First-stage summary                                  Number of obs   =      60
+-------------------------                            F(   3,    56)  =    8.27
+F(   8,    49)  =    4.01                            Prob > F        =  0.0001
+Prob > F        =  0.0010                            R-squared       =  0.3931
+R-squared       =  0.5405                            Adj R-squared   =  0.3606
+                                                     Root MSE        =  6.1040
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   .6734459   .4269192     1.58   0.120    -.1817761    1.528668
+          w1 |   2.024353   .8632191     2.35   0.023     .2951176    3.753589
+          w2 |   .5892788   .9972752     0.59   0.557    -1.408503    2.587061
+       _cons |  -.5797464   .7758355    -0.75   0.458    -2.133932    .9744389
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE2)
+
+First-stage summary                                  Number of obs   =      60
+-------------------------                            F(   3,    56)  =    4.82
+F(   8,    49)  =    4.01                            Prob > F        =  0.0047
+Prob > F        =  0.0010                            R-squared       =  0.4101
+R-squared       =  0.5405                            Adj R-squared   =  0.3785
+                                                     Root MSE        =  6.0181
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   .7256678   .7445573     0.97   0.334    -.7658598    2.217195
+          w1 |   2.152027   .9598411     2.24   0.029     .2292341     4.07482
+          w2 |   .5882236   .9096388     0.65   0.520    -1.234002    2.410449
+       _cons |  -.5671678   .8618364    -0.66   0.513    -2.293633    1.159298
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (JIVE2)
+
+First-stage summary                                  Number of obs   =      60
+-------------------------                            F(   3,    56)  =    8.46
+F(   8,    49)  =    4.01                            Prob > F        =  0.0001
+Prob > F        =  0.0010                            R-squared       =  0.4101
+R-squared       =  0.5405                            Adj R-squared   =  0.3785
+                                                     Root MSE        =  6.0181
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   .7256678   .5259647     1.38   0.173    -.3279662    1.779302
+          w1 |   2.152027   .8479813     2.54   0.014     .4533162    3.850737
+          w2 |   .5882236   .9811536     0.60   0.551    -1.377263     2.55371
+       _cons |  -.5671678   .7856269    -0.72   0.473    -2.140968    1.006632
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE1)
+
+First-stage summary                                  Number of obs   =      60
+-------------------------                            F(   3,    56)  =    6.91
+F(   8,    49)  =    4.01                            Prob > F        =  0.0005
+Prob > F        =  0.0010                            R-squared       =  0.5806
+R-squared       =  0.5405                            Adj R-squared   =  0.5581
+                                                     Root MSE        =  5.0745
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |    1.29217   .9776888     1.32   0.192    -.6663757    3.250716
+          w1 |   1.361185   1.213373     1.12   0.267    -1.069493    3.791863
+          w2 |   .7657013   .7979941     0.96   0.341     -.832873    2.364275
+       _cons |  -.2660983   .8180385    -0.33   0.746    -1.904826     1.37263
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE1)
+
+First-stage summary                                  Number of obs   =      60
+-------------------------                            F(   3,    56)  =   13.90
+F(   8,    49)  =    4.01                            Prob > F        =  0.0000
+Prob > F        =  0.0010                            R-squared       =  0.5806
+R-squared       =  0.5405                            Adj R-squared   =  0.5581
+                                                     Root MSE        =  5.0745
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |    1.29217   .6570021     1.97   0.054     -.023963    2.608304
+          w1 |   1.361185    1.00037     1.36   0.179    -.6427972    3.365167
+          w2 |   .7657013   .8164563     0.94   0.352    -.8698573     2.40126
+       _cons |  -.2660983   .7077086    -0.38   0.708    -1.683809    1.151612
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE2)
+
+First-stage summary                                  Number of obs   =      60
+-------------------------                            F(   3,    56)  =    6.28
+F(   8,    49)  =    4.01                            Prob > F        =  0.0009
+Prob > F        =  0.0010                            R-squared       =  0.5477
+R-squared       =  0.5405                            Adj R-squared   =  0.5235
+                                                     Root MSE        =  5.2696
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   1.167431   1.048838     1.11   0.270    -.9336426    3.268505
+          w1 |   1.492586   1.290163     1.16   0.252    -1.091921    4.077094
+          w2 |   .7314845   .8318083     0.88   0.383    -.9348279    2.397797
+       _cons |  -.3247788    .858461    -0.38   0.707    -2.044483    1.394925
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8
+------------------------------------------------------------------------------
+
+Jackknife instrumental variables regression (UJIVE2)
+
+First-stage summary                                  Number of obs   =      60
+-------------------------                            F(   3,    56)  =   12.05
+F(   8,    49)  =    4.01                            Prob > F        =  0.0000
+Prob > F        =  0.0010                            R-squared       =  0.5477
+R-squared       =  0.5405                            Adj R-squared   =  0.5235
+                                                     Root MSE        =  5.2696
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           t |   1.167431   .7237521     1.61   0.112    -.2824183    2.617281
+          w1 |   1.492586   1.078282     1.38   0.172    -.6674713    3.652644
+          w2 |   .7314845   .8539569     0.86   0.395    -.9791968    2.442166
+       _cons |  -.3247788   .7556973    -0.43   0.669    -1.838622    1.189065
+------------------------------------------------------------------------------
+Instrumented:  t
+Instruments:   w1 w2 z1 z2 z3 z4 z5 z6 z7 z8
+------------------------------------------------------------------------------
+
+. 
+. postclose `h'
+
+. use `res', clear
+
+. list, clean noobs
+
+                dataset                      source        beta          se  
+    n300_k10_nocontrols       Stata sjive, noshrink   2.1137395   .21371729  
+    n300_k10_nocontrols           Stata jive, jive1   1.9747162   .17543733  
+    n300_k10_nocontrols    Stata jive, jive1 robust   1.9747162   .20107816  
+    n300_k10_nocontrols           Stata jive, jive2   2.0482458   .18228038  
+    n300_k10_nocontrols    Stata jive, jive2 robust   2.0482458   .21183015  
+    n300_k10_nocontrols          Stata jive, ujive1   2.0956245   .22229768  
+    n300_k10_nocontrols   Stata jive, ujive1 robust   2.0956245   .21185876  
+    n300_k10_nocontrols          Stata jive, ujive2   2.0914944   .22270281  
+    n300_k10_nocontrols   Stata jive, ujive2 robust   2.0914944   .21286305  
+      n300_k10_controls       Stata sjive, noshrink   2.2723185    .2141161  
+      n300_k10_controls           Stata jive, jive1   2.0829613   .18232495  
+      n300_k10_controls    Stata jive, jive1 robust   2.0829613   .18325529  
+      n300_k10_controls           Stata jive, jive2    2.173293   .18638644  
+      n300_k10_controls    Stata jive, jive2 robust    2.173293   .18621921  
+      n300_k10_controls          Stata jive, ujive1     2.22118    .1810186  
+      n300_k10_controls   Stata jive, ujive1 robust     2.22118   .18090546  
+      n300_k10_controls          Stata jive, ujive2   2.2228973   .18112812  
+      n300_k10_controls   Stata jive, ujive2 robust   2.2228973   .18086334  
+        n60_k8_controls       Stata sjive, noshrink   1.7858639    .7206216  
+        n60_k8_controls           Stata jive, jive1   .67344585   .61292332  
+        n60_k8_controls    Stata jive, jive1 robust   .67344585   .42691919  
+        n60_k8_controls           Stata jive, jive2   .72566779   .74455733  
+        n60_k8_controls    Stata jive, jive2 robust   .72566779   .52596474  
+        n60_k8_controls          Stata jive, ujive1   1.2921704   .97768881  
+        n60_k8_controls   Stata jive, ujive1 robust   1.2921704   .65700212  
+        n60_k8_controls          Stata jive, ujive2   1.1674314   1.0488375  
+        n60_k8_controls   Stata jive, ujive2 robust   1.1674314   .72375212  
+
+. export delimited using "validation/results_stata.csv", replace
+file validation/results_stata.csv saved
+
+. display as text _newline "Wrote validation/results_stata.csv. Send it back (o
+> r run: python validation/compare.py)."
+
+Wrote validation/results_stata.csv. Send it back (or run: python validation/com
+> pare.py).
+
+. 
+end of do-file
+
+. log close
+      name:  <unnamed>
+       log:  <project-dir>/validation/results_stata.txt
+  log type:  text
+ closed on:  24 Sep 2026, 19:14:57
+-------------------------------------------------------------------------------

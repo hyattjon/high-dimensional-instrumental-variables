@@ -7,14 +7,12 @@
 *   It is NOT on SSC. Find it with `findit jive` or `search jackknife instrumental` and install from the
 *   Stata Journal link. If `jive` is missing, that block is skipped and the rest still runs.
 *
-* STATUS: written without access to Stata, so the `jive` option names below (jive1 jive2 ujive1 ujive2, robust)
-* are from documentation, not tested. Every call is wrapped in `capture`, so a wrong option just prints an
-* error and moves on. Check `help jive` and paste back anything that errors.
-*
-* What we expect to see (see the README "Naming" section):
-*   jive, ujive1  == our UJIVE1 == R jive()          (Angrist, Imbens, Krueger 1999 JIVE1)
-*   jive, jive1   == our JIVE1                        (to be confirmed by this run)
-*   sjive, noshrink == R ujive()  (Kolesar 2013 UJIVE), which this package does not implement
+* STATUS: run successfully (Stata 19 MP); results are in validation/results_stata.csv and results_stata.log.
+* Findings, checked against our estimators in validation/compare.py and tests/test_stata_reference.py:
+*   jive, ujive1 / ujive2 (robust)  == our UJIVE1 / UJIVE2 (coefficient and SE)
+*   jive, jive1 / jive2             == our JIVE1 / JIVE2 (coefficient only; the SEs differ)
+*   sjive, noshrink                 != R ujive() (Kolesar 2013): it also leaves observation i out of Y's partialling
+* sjive with noshrink needed a one-line fix to run (see validation/README.md).
 
 clear all
 set more off

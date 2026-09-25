@@ -89,16 +89,21 @@ Standard errors are heteroskedasticity-robust sandwich estimates following Poi (
 
 We use Stata's `jive` naming (Poi 2006). Other software and papers use "UJIVE" for a different estimator, so results are only comparable when you match the right pair:
 
-| This package | What it computes | Comparable to |
+| This package | What it computes | Verified against |
 |---|---|---|
-| `UJIVE1` | Angrist, Imbens, Krueger (1999) **JIVE1**: instrument `X̃` with `(Zπ̂ − hX)/(1−h)` | Stata `jive, ujive1` (the default); **R `jive::jive()`** (Kyle Butts) |
-| `UJIVE2` | Angrist, Imbens, Krueger (1999) **JIVE2**: same with `1 − 1/N` | Stata `jive, ujive2` |
-| `JIVE1`, `JIVE2` | Regress `Y` on the jackknife fit `X̃` (`X̃'X̃`) | Stata `jive, jive1` / `jive2` (to be confirmed) |
-| *(not implemented)* | **Kolesár (2013) UJIVE**: leave-one-out fit on `[Z, W]` minus a leave-one-out fit on the controls `W` alone | R `jive::ujive()`; Stata `sjive, noshrink`; Frandsen et al. |
+| `UJIVE1` | Angrist, Imbens, Krueger (1999) **JIVE1**, IV form: instrument `X̃ = (Zπ̂ − hX)/(1−h)` | **R `jive::jive()`** and **Stata `jive, ujive1`**: coefficient and robust SE agree to ~1e-8 |
+| `UJIVE2` | Angrist, Imbens, Krueger (1999) **JIVE2**, IV form: same with `1 − 1/N` | **Stata `jive, ujive2`**: coefficient and robust SE agree to ~1e-8 |
+| `JIVE1`, `JIVE2` | Regress `Y` on the jackknife fit `X̃` (`X̃'X̃`) | **Stata `jive, jive1` / `jive2`**: coefficients agree to ~1e-8. Standard errors do **not** match Stata's (see below). |
+| *(not implemented)* | **Kolesár (2013) UJIVE**: leave-one-out fit on `[Z, W]` minus a leave-one-out fit on the controls `W` alone; `β = P̂'Y / P̂'T` | R `jive::ujive()` (reproduced exactly with this formula). Stata `sjive, noshrink` is a *different* estimator, see below. |
 
 In short: **our `UJIVE1` is the R package's `jive()`, not its `ujive()`**. In Kolesár's terminology our `UJIVE1` is "JIVE". The two differ only in how the controls are handled; with no controls other than the constant they are still not identical, because the constant is itself a control.
 
-**Checked against R.** On the simulated data in [`validation/`](validation/), our `UJIVE1` reproduces R's `jive()` (coefficient and standard error) to at least six decimals, with and without controls, at N = 300 and N = 60 (`tests/test_r_reference.py`). R's `ujive()` matches none of our estimators. The comparison with Stata's `jive` and `sjive` is set up in `validation/run_stata.do` but has not been run yet, so the Stata column above is based on Kolesár's documentation, not on our own results.
+**Checked against R and Stata.** The data, the R script, the Stata do-file and both sets of results are in [`validation/`](validation/), and `tests/test_r_reference.py` and `tests/test_stata_reference.py` lock the agreement in. On three simulated data sets (N = 300 and N = 60, with and without controls):
+
+- **Coefficients:** all four of our estimators equal the Stata `jive` command's `jive1`, `jive2`, `ujive1`, `ujive2` (differences ~1e-9 to 4e-8), and `UJIVE1` equals R's `jive()` to floating-point rounding.
+- **Standard errors:** `UJIVE1` and `UJIVE2` equal Stata's `robust` standard errors (~1e-8). For `JIVE1` and `JIVE2` our robust standard errors are within roughly 0.4-4% of Stata's `robust` ones but not equal: Stata's `jive1`/`jive2` report a different residual scale (its Root MSE and R-squared match none of the residuals we tried), and we have not been able to identify its formula without Poi's source. Use the coefficients, not the standard errors, when comparing `JIVE1`/`JIVE2` with Stata.
+- **Other reported numbers:** for `UJIVE1` our Root MSE, R-squared, Wald F and first-stage F(10, 289) also equal Stata's. The first-stage F equals Stata's for all four.
+- **`sjive, noshrink` is not Kolesár's UJIVE.** It builds the same `P̂`, but its last step is an IV regression (with a constant) of a leave-one-out-residualised `Y` on `T`, so it also leaves observation `i` out of `Y`'s partialling. We reproduced its coefficient to 1e-8 that way, but it differs from R's `ujive()` (2.1137 against 2.1053 on one data set, and 1.786 against 1.668 at N = 60). Neither is implemented here.
 
 ### How it is computed (no projection matrix)
 
